@@ -1550,6 +1550,39 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
           ))}
         </div>
 
+        {/* API Key section */}
+        {!openRouterKey ? (
+          <div style={{ marginBottom:"24px", background:"#03010a", border:"1px solid #1a1005", borderRadius:"3px", padding:"16px", textAlign:"left" }}>
+            <div style={{ color:"#6b4c1e", fontSize:"9px", letterSpacing:"3px", marginBottom:"10px" }}>▸ OPENROUTER API KEY REQUIRED</div>
+            <div style={{ display:"flex", gap:"8px" }}>
+              <input
+                type="password"
+                placeholder="sk-or-..."
+                value={keyDraft}
+                onChange={e => setKeyDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && keyDraft.trim()) { storeApiKey(keyDraft.trim()); setOpenRouterKey(keyDraft.trim()); setKeyDraft(""); }}}
+                style={{ flex:1, background:"#000", border:"1px solid #2a1a08", borderRadius:"2px", color:"#8a7560", fontSize:"11px", padding:"8px 12px", fontFamily:"'Share Tech Mono',monospace", outline:"none" }}
+              />
+              <button
+                onClick={() => { if (keyDraft.trim()) { storeApiKey(keyDraft.trim()); setOpenRouterKey(keyDraft.trim()); setKeyDraft(""); }}}
+                style={{ background:"#060300", border:"1px solid #8b5c1a", color:"#c4892a", fontSize:"9px", padding:"8px 14px", cursor:"pointer", borderRadius:"2px", letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace" }}
+              >
+                SAVE
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginBottom:"24px", display:"flex", alignItems:"center", justifyContent:"center", gap:"12px" }}>
+            <div style={{ color:"#3d6b2a", fontSize:"9px", letterSpacing:"2px" }}>✓ API KEY ACTIVE</div>
+            <button
+              onClick={() => { storeApiKey(""); setOpenRouterKey(""); }}
+              style={{ background:"none", border:"1px solid #1a1005", borderRadius:"2px", color:"#2d2316", fontSize:"8px", cursor:"pointer", padding:"4px 10px", letterSpacing:"1px", fontFamily:"'Share Tech Mono',monospace" }}
+            >
+              CHANGE KEY
+            </button>
+          </div>
+        )}
+
         <button className="intro-btn" disabled={!openRouterKey} onClick={() => setScreen("origin")}>CHOOSE YOUR BLOOD</button>
 
         {existingSave && (
@@ -1588,44 +1621,6 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
         )}
 
         <div style={{ marginTop:"16px", color:"#1a1005", fontSize:"9px", letterSpacing:"3px" }}>THE REALM REMEMBERS WHAT YOU DO</div>
-
-        {/* API Key section */}
-        <div style={{ marginTop:"28px", borderTop:"1px solid #0f0700", paddingTop:"20px" }}>
-          {!openRouterKey ? (
-            <div style={{ background:"#03010a", border:"1px solid #1a1005", borderRadius:"3px", padding:"18px", textAlign:"left" }}>
-              <div style={{ color:"#6b4c1e", fontSize:"9px", letterSpacing:"3px", marginBottom:"12px" }}>▸ OPENROUTER API KEY REQUIRED</div>
-              <div style={{ color:"#3d2e1a", fontSize:"10px", lineHeight:1.8, marginBottom:"14px", fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>
-                Paste your OpenRouter key to begin. It is stored locally in your browser only.
-              </div>
-              <div style={{ display:"flex", gap:"8px" }}>
-                <input
-                  type="password"
-                  placeholder="sk-or-..."
-                  value={keyDraft}
-                  onChange={e => setKeyDraft(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && keyDraft.trim()) { storeApiKey(keyDraft.trim()); setOpenRouterKey(keyDraft.trim()); setKeyDraft(""); }}}
-                  style={{ flex:1, background:"#000", border:"1px solid #2a1a08", borderRadius:"2px", color:"#8a7560", fontSize:"11px", padding:"8px 12px", fontFamily:"'Share Tech Mono',monospace", outline:"none" }}
-                />
-                <button
-                  onClick={() => { if (keyDraft.trim()) { storeApiKey(keyDraft.trim()); setOpenRouterKey(keyDraft.trim()); setKeyDraft(""); }}}
-                  style={{ background:"#060300", border:"1px solid #8b5c1a", color:"#c4892a", fontSize:"9px", padding:"8px 14px", cursor:"pointer", borderRadius:"2px", letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace" }}
-                >
-                  SAVE
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"12px" }}>
-              <div style={{ color:"#3d6b2a", fontSize:"9px", letterSpacing:"2px" }}>✓ API KEY ACTIVE</div>
-              <button
-                onClick={() => { storeApiKey(""); setOpenRouterKey(""); }}
-                style={{ background:"none", border:"1px solid #1a1005", borderRadius:"2px", color:"#2d2316", fontSize:"8px", cursor:"pointer", padding:"4px 10px", letterSpacing:"1px", fontFamily:"'Share Tech Mono',monospace" }}
-              >
-                CHANGE KEY
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
