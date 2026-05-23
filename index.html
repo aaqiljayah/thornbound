@@ -135,6 +135,7 @@ NPC RULES:
 WRITING RULES:
 - Second-person present tense ("You push open the door...")
 - Atmospheric, precise prose. Literary but never self-indulgent. Make every sentence earn its place.
+- STRICT LENGTH: Keep narration under 100 words. Every word must earn its place. No padding.
 - Consequences are real — allies die, plans fail, moral choices echo forward.
 - Four choices per turn, genuinely different — not tone variants, but strategic divergences.
 - On pivot turns: present a true dilemma with no clean answer. Both paths should cost something.
@@ -327,144 +328,287 @@ function detectKingdom(locationStr) {
 
 function RealmMap({ location, currentEra }) {
   const activeKingdom = detectKingdom(location);
+  const [mapMode, setMapMode] = React.useState("normal");
 
-  // Kingdom region definitions (SVG path polygons in a 200×180 viewBox)
-  const kingdoms = {
-    ironmere: {
-      label: "IRONMERE", capital: "Varenhold",
-      path: "M20 10 L100 10 L105 20 L95 55 L80 70 L60 65 L30 70 L15 50 Z",
-      cx: 58, cy: 38, color: "#60a5fa",
-    },
-    caldrath: {
-      label: "CALDRATH", capital: "Dur Crossing",
-      path: "M100 10 L180 10 L185 55 L170 70 L140 65 L105 20 L95 55 Z",
-      cx: 140, cy: 38, color: "#a78bfa",
-    },
-    vael: {
-      label: "VAEL", capital: "Silvenmoor",
-      path: "M15 50 L30 70 L60 65 L80 70 L75 110 L50 130 L20 120 L10 80 Z",
-      cx: 44, cy: 92, color: "#34d399",
-    },
-    duskfen: {
-      label: "DUSKFEN", capital: "Mirehold",
-      path: "M80 70 L95 55 L105 20 L140 65 L150 80 L135 120 L110 130 L90 115 L75 110 Z",
-      cx: 112, cy: 92, color: "#f59e0b",
-    },
-    ashkeep: {
-      label: "ASHKEEP", capital: "Ashgate",
-      path: "M140 65 L170 70 L185 55 L195 90 L185 135 L160 145 L135 120 L150 80 Z",
-      cx: 162, cy: 105, color: "#f87171",
-    },
+  const kingdomColors = {
+    ironmere:"#60a5fa", vael:"#34d399", caldrath:"#a78bfa", duskfen:"#f59e0b", ashkeep:"#f87171"
   };
 
-  // Thorn road paths connecting capitals
-  const roads = [
-    "M58 38 L112 92", // Ironmere — Duskfen
-    "M140 38 L112 92", // Caldrath — Duskfen
-    "M44 92 L112 92",  // Vael — Duskfen
-    "M112 92 L162 105", // Duskfen — Ashkeep
-    "M58 38 L44 92",  // Ironmere — Vael
-    "M140 38 L162 105", // Caldrath — Ashkeep
-  ];
-
   return (
-    <div style={{ padding:"10px 8px 6px" }}>
-      <div style={{ fontSize:"8px", color:"#2d2316", letterSpacing:"2px", marginBottom:"8px" }}>THE FIVE KINGDOMS</div>
-      <svg viewBox="0 0 200 160" width="100%" style={{ display:"block", maxHeight:"160px" }}>
+    <div style={{ padding:"6px 4px 4px" }}>
+      {/* Mode bar */}
+      <div style={{ display:"flex", gap:"4px", marginBottom:"6px", justifyContent:"center" }}>
+        {["normal","political","war","void"].map(m => (
+          <button key={m} onClick={() => setMapMode(m)} style={{
+            background: mapMode===m ? "#0d0700" : "none",
+            border: m==="void" ? `1px solid ${mapMode===m?"#7b2fa8":"#2d0a3d"}` : `1px solid ${mapMode===m?"#8b5c1a":"#1a1208"}`,
+            color: m==="void" ? (mapMode===m?"#b060e8":"#4a1a6b") : (mapMode===m?"#c4892a":"#3d2e1a"),
+            padding:"2px 7px", fontSize:"7px", letterSpacing:"1.5px", cursor:"pointer", borderRadius:"2px",
+            fontFamily:"'Share Tech Mono',monospace",
+            boxShadow: mapMode===m ? (m==="void"?"0 0 8px rgba(123,47,168,.3)":"0 0 6px rgba(139,92,26,.2)") : "none",
+          }}>{m.toUpperCase()}</button>
+        ))}
+      </div>
+
+      <svg viewBox="0 0 1000 680" width="100%" style={{
+        display:"block", border:"1px solid #1a1208", borderRadius:"3px",
+        filter: mapMode==="void" ? "saturate(.4) brightness(.7)" : "none",
+        transition:"filter .4s ease",
+      }}>
         <defs>
-          <filter id="mapGlow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="3" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          <filter id="rm-parchment" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" result="noise"/>
+            <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+            <feBlend in="SourceGraphic" in2="grayNoise" mode="multiply" result="blended"/>
+            <feComponentTransfer in="blended">
+              <feFuncR type="linear" slope="0.92" intercept="0.06"/>
+              <feFuncG type="linear" slope="0.88" intercept="0.05"/>
+              <feFuncB type="linear" slope="0.75" intercept="0.03"/>
+            </feComponentTransfer>
           </filter>
-          <pattern id="mapHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="6" stroke="#1a1005" strokeWidth="0.5"/>
+          <filter id="rm-aged" x="-2%" y="-2%" width="104%" height="104%">
+            <feTurbulence type="turbulence" baseFrequency="0.02 0.05" numOctaves="2" result="noise"/>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+          <filter id="rm-glow-gold"><feGaussianBlur stdDeviation="3" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter>
+          <filter id="rm-glow-void"><feGaussianBlur stdDeviation="6" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter>
+          <radialGradient id="rm-parchBg" cx="45%" cy="40%" r="65%">
+            <stop offset="0%" stopColor="#f2e8c8"/><stop offset="60%" stopColor="#e8d8a8"/><stop offset="100%" stopColor="#c8b880"/>
+          </radialGradient>
+          <radialGradient id="rm-stain1" cx="20%" cy="15%" r="35%">
+            <stop offset="0%" stopColor="#a89030" stopOpacity="0.12"/><stop offset="100%" stopColor="transparent"/>
+          </radialGradient>
+          <radialGradient id="rm-stain2" cx="80%" cy="75%" r="30%">
+            <stop offset="0%" stopColor="#806000" stopOpacity="0.12"/><stop offset="100%" stopColor="transparent"/>
+          </radialGradient>
+          <linearGradient id="rm-seaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#1a3a5c"/><stop offset="100%" stopColor="#0d2540"/>
+          </linearGradient>
+          <radialGradient id="rm-voidGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#1a0030"/><stop offset="40%" stopColor="#0d001a"/><stop offset="100%" stopColor="#060008"/>
+          </radialGradient>
+          <radialGradient id="rm-voidGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#6a1aaa" stopOpacity="0.6"/><stop offset="100%" stopColor="#2d0060" stopOpacity="0"/>
+          </radialGradient>
+          <linearGradient id="rm-ironmereGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#c8c8c8" stopOpacity="0.25"/><stop offset="100%" stopColor="#909090" stopOpacity="0.1"/>
+          </linearGradient>
+          <linearGradient id="rm-vaelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#2a6a9a" stopOpacity="0.2"/><stop offset="100%" stopColor="#1a4a7a" stopOpacity="0.05"/>
+          </linearGradient>
+          <linearGradient id="rm-caldrath_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#8a6a3a" stopOpacity="0.2"/><stop offset="100%" stopColor="#6a4a2a" stopOpacity="0.05"/>
+          </linearGradient>
+          <linearGradient id="rm-duskfenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#2a4a2a" stopOpacity="0.25"/><stop offset="100%" stopColor="#1a2a1a" stopOpacity="0.05"/>
+          </linearGradient>
+          <linearGradient id="rm-ashkeepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#c87a2a" stopOpacity="0.2"/><stop offset="100%" stopColor="#a85a1a" stopOpacity="0.05"/>
+          </linearGradient>
+          <pattern id="rm-warLines" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#c03020" strokeWidth="1.5" strokeOpacity="0.6"/>
           </pattern>
+          <pattern id="rm-swampHatch" patternUnits="userSpaceOnUse" width="6" height="6">
+            <line x1="0" y1="0" x2="6" y2="6" stroke="#3a5a2a" strokeWidth="0.6" strokeOpacity="0.5"/>
+            <line x1="6" y1="0" x2="0" y2="6" stroke="#3a5a2a" strokeWidth="0.6" strokeOpacity="0.5"/>
+          </pattern>
+          <pattern id="rm-desertDot" patternUnits="userSpaceOnUse" width="8" height="8">
+            <circle cx="4" cy="4" r="0.8" fill="#c87a2a" fillOpacity="0.35"/>
+          </pattern>
+          <clipPath id="rm-nemnoClip"><ellipse cx="920" cy="615" rx="65" ry="52"/></clipPath>
         </defs>
 
-        {/* Ocean / background */}
-        <rect width="200" height="160" fill="#03010a"/>
-        <rect width="200" height="160" fill="url(#mapHatch)" opacity="0.4"/>
+        {/* Parchment base */}
+        <rect width="1000" height="680" fill="url(#rm-parchBg)"/>
+        <rect width="1000" height="680" fill="url(#rm-stain1)"/>
+        <rect width="1000" height="680" fill="url(#rm-stain2)"/>
+        <rect x="0" y="0" width="1000" height="680" fill="none" stroke="#8a6a2a" strokeWidth="18" strokeOpacity="0.3"/>
+        <rect x="9" y="9" width="982" height="662" fill="none" stroke="#6a4a1a" strokeWidth="2" strokeOpacity="0.4"/>
 
-        {/* Kingdom regions */}
-        {Object.entries(kingdoms).map(([key, k]) => {
-          const isActive = activeKingdom === key;
-          const eraColor = currentEra?.color || "#8b5c1a";
+        {/* Seas */}
+        <path d="M0,0 L1000,0 L1000,80 Q900,100 800,85 Q700,70 600,90 Q500,110 400,85 Q300,60 200,80 Q100,100 0,75 Z" fill="url(#rm-seaGrad)" fillOpacity="0.55"/>
+        <path d="M0,0 L0,680 L80,680 Q60,600 75,500 Q90,400 70,300 Q50,200 75,100 Q88,60 0,0 Z" fill="url(#rm-seaGrad)" fillOpacity="0.4"/>
+        <text x="42" y="45" fontFamily="'IM Fell English',serif" fontStyle="italic" fontSize="11" fill="#1a3a5c" fillOpacity="0.5" textAnchor="middle">Northern Sea</text>
+        <text x="38" y="380" fontFamily="'IM Fell English',serif" fontStyle="italic" fontSize="10" fill="#1a3a5c" fillOpacity="0.45" textAnchor="middle" transform="rotate(-90,38,380)">Westerdeep</text>
+
+        {/* Kingdom territories */}
+        {/* IRONMERE — north, grey */}
+        <path d="M80,75 Q200,55 350,60 Q420,62 450,80 Q460,100 440,140 Q420,170 390,185 Q350,200 300,195 Q250,190 210,180 Q170,170 140,155 Q100,135 85,110 Z"
+          fill="url(#rm-ironmereGrad)" stroke="#8a8a8a" strokeWidth={activeKingdom==="ironmere"?"2.5":"1.2"} strokeOpacity={activeKingdom==="ironmere"?0.9:0.45}/>
+        {activeKingdom==="ironmere" && <path d="M80,75 Q200,55 350,60 Q420,62 450,80 Q460,100 440,140 Q420,170 390,185 Q350,200 300,195 Q250,190 210,180 Q170,170 140,155 Q100,135 85,110 Z" fill="none" stroke="#60a5fa" strokeWidth="2" opacity="0.6" filter="url(#rm-glow-gold)"/>}
+
+        {/* VAEL — west coast, blue */}
+        <path d="M80,110 Q140,155 170,170 Q190,200 185,260 Q180,320 160,370 Q140,410 110,430 Q80,445 65,430 Q50,400 55,340 Q60,280 65,220 Q68,160 80,110 Z"
+          fill="url(#rm-vaelGrad)" stroke="#2a6a9a" strokeWidth={activeKingdom==="vael"?"2.5":"1"} strokeOpacity={activeKingdom==="vael"?0.9:0.4}/>
+        {activeKingdom==="vael" && <path d="M80,110 Q140,155 170,170 Q190,200 185,260 Q180,320 160,370 Q140,410 110,430 Q80,445 65,430 Q50,400 55,340 Q60,280 65,220 Q68,160 80,110 Z" fill="none" stroke="#34d399" strokeWidth="2" opacity="0.6" filter="url(#rm-glow-gold)"/>}
+
+        {/* CALDRATH — central, amber */}
+        <path d="M350,60 Q500,50 600,70 Q650,85 660,120 Q665,155 640,190 Q610,225 570,245 Q520,260 470,255 Q420,250 390,235 Q360,215 360,185 Q355,160 370,140 Q385,115 390,95 Q395,75 380,62 Z"
+          fill="url(#rm-caldrath_grad)" stroke="#8a6a3a" strokeWidth={activeKingdom==="caldrath"?"2.5":"1.2"} strokeOpacity={activeKingdom==="caldrath"?0.9:0.45}/>
+        {activeKingdom==="caldrath" && <path d="M350,60 Q500,50 600,70 Q650,85 660,120 Q665,155 640,190 Q610,225 570,245 Q520,260 470,255 Q420,250 390,235 Q360,215 360,185 Q355,160 370,140 Q385,115 390,95 Q395,75 380,62 Z" fill="none" stroke="#a78bfa" strokeWidth="2" opacity="0.6" filter="url(#rm-glow-gold)"/>}
+
+        {/* DUSKFEN — southwest swamp */}
+        <path d="M170,170 Q210,180 270,195 Q330,205 360,215 Q380,235 375,280 Q370,320 350,360 Q325,400 290,420 Q260,435 230,430 Q195,420 175,400 Q155,375 155,345 Q155,310 160,275 Q168,230 175,195 Q178,185 170,170 Z"
+          fill="url(#rm-duskfenGrad)" stroke="#3a6a3a" strokeWidth={activeKingdom==="duskfen"?"2.5":"1"} strokeOpacity={activeKingdom==="duskfen"?0.9:0.4}/>
+        <path d="M170,170 Q210,180 270,195 Q330,205 360,215 Q380,235 375,280 Q370,320 350,360 Q325,400 290,420 Q260,435 230,430 Q195,420 175,400 Q155,375 155,345 Q155,310 160,275 Q168,230 175,195 Q178,185 170,170 Z" fill="url(#rm-swampHatch)" opacity="0.4"/>
+        {activeKingdom==="duskfen" && <path d="M170,170 Q210,180 270,195 Q330,205 360,215 Q380,235 375,280 Q370,320 350,360 Q325,400 290,420 Q260,435 230,430 Q195,420 175,400 Q155,375 155,345 Q155,310 160,275 Q168,230 175,195 Q178,185 170,170 Z" fill="none" stroke="#f59e0b" strokeWidth="2" opacity="0.6" filter="url(#rm-glow-gold)"/>}
+
+        {/* ASHKEEP — south desert */}
+        <path d="M375,280 Q420,260 470,255 Q520,260 570,245 Q620,235 650,255 Q670,275 665,320 Q660,370 635,410 Q600,450 555,465 Q500,475 450,465 Q400,450 370,420 Q350,395 350,360 Q365,330 375,280 Z"
+          fill="url(#rm-ashkeepGrad)" stroke="#a86020" strokeWidth={activeKingdom==="ashkeep"?"2.5":"1.2"} strokeOpacity={activeKingdom==="ashkeep"?0.9:0.45}/>
+        <path d="M375,280 Q420,260 470,255 Q520,260 570,245 Q620,235 650,255 Q670,275 665,320 Q660,370 635,410 Q600,450 555,465 Q500,475 450,465 Q400,450 370,420 Q350,395 350,360 Q365,330 375,280 Z" fill="url(#rm-desertDot)" opacity="0.6"/>
+        {activeKingdom==="ashkeep" && <path d="M375,280 Q420,260 470,255 Q520,260 570,245 Q620,235 650,255 Q670,275 665,320 Q660,370 635,410 Q600,450 555,465 Q500,475 450,465 Q400,450 370,420 Q350,395 350,360 Q365,330 375,280 Z" fill="none" stroke="#f87171" strokeWidth="2" opacity="0.6" filter="url(#rm-glow-gold)"/>}
+
+        {/* Mountains — north border of Ironmere */}
+        <g fill="#7a6a4a" fillOpacity="0.5" stroke="#5a4a2a" strokeWidth="0.8" strokeOpacity="0.4">
+          <polygon points="155,68 165,50 175,68"/><polygon points="168,65 180,46 192,65"/>
+          <polygon points="182,63 194,44 206,63"/><polygon points="196,62 208,43 220,62"/>
+          <polygon points="210,60 222,41 234,60"/><polygon points="224,59 236,40 248,59"/>
+          <polygon points="238,60 250,42 262,60"/><polygon points="252,60 264,42 276,60"/>
+          <polygon points="266,61 278,43 290,61"/><polygon points="280,62 292,44 304,62"/>
+          <polygon points="294,62 306,44 318,62"/><polygon points="308,62 320,44 332,62"/>
+          <polygon points="322,62 334,44 346,62"/>
+        </g>
+
+        {/* Political borders overlay */}
+        {mapMode==="political" && <>
+          <path d="M390,185 Q380,230 375,280" stroke="#c4892a" strokeWidth="2.5" strokeOpacity="0.7" fill="none" strokeDasharray="8,4"/>
+          <path d="M350,360 Q290,420 230,430" stroke="#c4892a" strokeWidth="2" strokeOpacity="0.6" fill="none" strokeDasharray="8,4"/>
+          <path d="M570,245 Q615,240 650,255" stroke="#c4892a" strokeWidth="2" strokeOpacity="0.6" fill="none" strokeDasharray="8,4"/>
+        </>}
+
+        {/* War front overlay */}
+        {mapMode==="war" && <>
+          <path d="M430,110 Q470,105 510,108 Q540,110 545,140" fill="none" stroke="#c03020" strokeWidth="5" strokeOpacity="0.7" strokeDasharray="7,4" style={{animation:"pulseWar 1.8s ease-in-out infinite"}}/>
+          <rect x="430" y="100" width="120" height="55" fill="url(#rm-warLines)" fillOpacity="0.25" rx="2"/>
+          <text x="490" y="96" fontFamily="'Share Tech Mono',monospace" fontSize="9" fill="#e05040" fillOpacity="0.8" textAnchor="middle" letterSpacing="1">CONTESTED</text>
+        </>}
+
+        {/* Roads */}
+        <g stroke="#8a6a3a" strokeWidth="1.2" fill="none" strokeOpacity="0.4" strokeDasharray="4,3">
+          <path d="M225,155 Q290,220 340,290 Q355,310 370,340"/>
+          <path d="M500,175 Q480,220 470,255"/>
+          <path d="M500,175 Q420,200 390,235"/>
+          <path d="M225,155 Q350,160 500,175"/>
+          <path d="M470,365 Q510,400 540,440"/>
+        </g>
+
+        {/* Rivers */}
+        <path d="M350,60 Q340,120 330,180 Q320,240 310,300 Q300,360 290,420" stroke="#1a5a8a" strokeWidth="1.8" fill="none" strokeOpacity="0.35"/>
+        <path d="M450,80 Q440,120 435,160 Q430,200 415,240 Q400,280 390,320" stroke="#1a5a8a" strokeWidth="1.4" fill="none" strokeOpacity="0.28"/>
+
+        {/* City markers — major capitals */}
+        {[
+          { name:"Varenhold", x:225, y:155, kingdom:"ironmere", color:"#808080" },
+          { name:"Silvenmoor", x:110, y:300, kingdom:"vael", color:"#2a5a8a" },
+          { name:"Dur Crossing", x:500, y:175, kingdom:"caldrath", color:"#8a6a2a" },
+          { name:"Mirehold", x:260, y:340, kingdom:"duskfen", color:"#3a6a3a" },
+          { name:"Ashgate", x:510, y:380, kingdom:"ashkeep", color:"#a86020" },
+        ].map(city => {
+          const isActive = activeKingdom === city.kingdom;
+          const ac = kingdomColors[city.kingdom] || city.color;
           return (
-            <g key={key}>
-              <path
-                d={k.path}
-                fill={isActive ? k.color : "#0d0800"}
-                stroke={isActive ? k.color : "#2a1a08"}
-                strokeWidth={isActive ? "1.5" : "0.8"}
-                opacity={isActive ? 0.25 : 0.9}
-              />
-              {isActive && (
-                <path d={k.path} fill="none" stroke={k.color} strokeWidth="1.5"
-                  opacity="0.7" filter="url(#mapGlow)"/>
-              )}
+            <g key={city.name}>
+              {isActive && <circle cx={city.x} cy={city.y} r="14" fill={ac} fillOpacity="0.15" style={{animation:"voidPulse 2s ease infinite"}}/>}
+              <circle cx={city.x} cy={city.y} r={isActive?7:5} fill={isActive?ac:city.color} fillOpacity={isActive?0.9:0.6} stroke={isActive?ac:city.color} strokeWidth={isActive?"1.5":"0.8"} strokeOpacity="0.8" filter={isActive?"url(#rm-glow-gold)":undefined}/>
+              <circle cx={city.x} cy={city.y} r={isActive?3:2} fill="#f2e8c8" fillOpacity="0.9"/>
+              <text x={city.x} y={city.y-10} fontFamily="'Cinzel',serif" fontSize={isActive?"11":"9"} fill={isActive?ac:city.color} fillOpacity={isActive?1:0.7} textAnchor="middle" fontWeight={isActive?"700":"400"} letterSpacing="0.5">{city.name}</text>
+              {isActive && <text x={city.x} y={city.y+20} fontFamily="'IM Fell English',serif" fontStyle="italic" fontSize="8" fill={ac} fillOpacity="0.8" textAnchor="middle">◆ YOU ARE HERE</text>}
             </g>
           );
         })}
 
-        {/* Thornbound roads */}
-        {roads.map((d, i) => (
-          <path key={i} d={d} stroke="#2a1a08" strokeWidth="0.6" fill="none" strokeDasharray="3,3" opacity="0.5"/>
+        {/* Minor settlements */}
+        {[
+          { name:"Ashenford", x:290, y:265, color:"#a0a0a0" },
+          { name:"Iron Gate Pass", x:365, y:155, color:"#8a8a8a", square:true },
+          { name:"Mireport", x:82, y:458, color:"#4a7a4a" },
+          { name:"Emberveil", x:565, y:490, color:"#c87a2a" },
+          { name:"Thornweaver's Bridge", x:275, y:385, color:"#8a7a4a", square:true },
+        ].map(s => (
+          <g key={s.name}>
+            {s.square
+              ? <rect x={s.x-4} y={s.y-4} width="8" height="8" fill={s.color} fillOpacity="0.5" stroke={s.color} strokeWidth="0.8" strokeOpacity="0.6"/>
+              : <circle cx={s.x} cy={s.y} r="4" fill={s.color} fillOpacity="0.5" stroke={s.color} strokeWidth="0.8" strokeOpacity="0.6"/>
+            }
+            <text x={s.x+8} y={s.y+3} fontFamily="'Cinzel',serif" fontSize="8" fill={s.color} fillOpacity="0.7">{s.name}</text>
+          </g>
         ))}
 
-        {/* Capital dots + labels */}
-        {Object.entries(kingdoms).map(([key, k]) => {
-          const isActive = activeKingdom === key;
-          return (
-            <g key={key}>
-              <circle
-                cx={k.cx} cy={k.cy} r={isActive ? 4 : 2.5}
-                fill={isActive ? k.color : "#3d2e1a"}
-                stroke={isActive ? k.color : "#1a1005"}
-                strokeWidth="0.8"
-                opacity={isActive ? 1 : 0.7}
-                filter={isActive ? "url(#mapGlow)" : undefined}
-              />
-              {isActive && (
-                <circle cx={k.cx} cy={k.cy} r="7" fill={k.color} opacity="0.12"
-                  style={{ animation:"voidPulse 2s ease infinite" }}/>
-              )}
-              <text x={k.cx} y={k.cy - 7} textAnchor="middle"
-                fill={isActive ? k.color : "#3d2e1a"}
-                fontSize="6" fontFamily="'Share Tech Mono',monospace"
-                letterSpacing="0.5"
-                opacity={isActive ? 1 : 0.6}
-              >
-                {k.label}
-              </text>
-              {isActive && (
-                <text x={k.cx} y={k.cy + 14} textAnchor="middle"
-                  fill={k.color} fontSize="5" fontFamily="'IM Fell English',serif"
-                  fontStyle="italic" opacity="0.8"
-                >
-                  {k.capital}
-                </text>
-              )}
-            </g>
-          );
-        })}
+        {/* Kingdom labels */}
+        <g fontFamily="'Cinzel',serif" fontWeight="700" fillOpacity="0.18" textAnchor="middle">
+          <text x="220" y="125" fontSize="20" fill="#707070" letterSpacing="3" transform="rotate(-5,220,125)">IRONMERE</text>
+          <text x="120" y="310" fontSize="16" fill="#1a5a8a" letterSpacing="2" transform="rotate(-90,120,310)">VAEL</text>
+          <text x="510" y="155" fontSize="17" fill="#8a6a2a" letterSpacing="2" transform="rotate(-2,510,155)">CALDRATH</text>
+          <text x="265" y="310" fontSize="14" fill="#2a5a2a" letterSpacing="2" transform="rotate(-8,265,310)">DUSKFEN</text>
+          <text x="505" y="360" fontSize="17" fill="#9a5a1a" letterSpacing="2" transform="rotate(2,505,360)">ASHKEEP</text>
+        </g>
 
-        {/* Current location label at bottom if unmatched */}
+        {/* NEMNO — far bottom right, isolated */}
+        <ellipse cx="920" cy="615" rx="80" ry="65" fill="url(#rm-voidGlow)" opacity={mapMode==="void"?0.9:0.4}/>
+        {/* Corrupted land cracks leading to Nemno */}
+        <g stroke="#3a0a5a" strokeOpacity="0.25" strokeWidth="0.8" fill="none">
+          <path d="M790,590 Q830,578 855,588"/><path d="M785,608 Q825,598 850,602"/><path d="M792,626 Q832,618 858,622"/>
+        </g>
+        {/* The Pale separator */}
+        <path d="M640,580 Q700,600 750,612 Q780,620 810,626" stroke="#2a1a00" strokeWidth="1" strokeOpacity="0.35" fill="none" strokeDasharray="2,4"/>
+        <text x="720" y="648" fontFamily="'IM Fell English',serif" fontStyle="italic" fontSize="8" fill="#3a2a10" fillOpacity="0.5" textAnchor="middle">The Pale — no one crosses</text>
+        {/* Main void mass */}
+        <ellipse cx="920" cy="615" rx="72" ry="58" fill="url(#rm-voidGrad)" stroke="#3a0a5a" strokeWidth="2" strokeOpacity="0.8"/>
+        {/* Scratched texture */}
+        <g clipPath="url(#rm-nemnoClip)" stroke="#0a0020" strokeOpacity="0.5" fill="none" strokeWidth="1">
+          <line x1="858" y1="568" x2="975" y2="660"/><line x1="868" y1="560" x2="980" y2="650"/>
+          <line x1="848" y1="578" x2="970" y2="665"/><line x1="862" y1="585" x2="970" y2="632"/>
+          <line x1="878" y1="563" x2="978" y2="648"/><line x1="853" y1="622" x2="975" y2="575"/>
+          <line x1="858" y1="640" x2="978" y2="585"/><line x1="848" y1="628" x2="972" y2="568"/>
+        </g>
+        {/* Pulsing inner void */}
+        <ellipse cx="920" cy="615" rx="40" ry="32" fill="#0d001a" fillOpacity="0.8"/>
+        <ellipse cx="920" cy="615" rx="22" ry="18" fill="#4a0a7a" fillOpacity="0.25" style={{animation:"voidPulse 3s ease-in-out infinite"}}/>
+        {/* Rune ring */}
+        <g style={{animation: mapMode==="void"?"rotRunes 20s linear infinite":"none", transformOrigin:"920px 615px"}}>
+          {["ᚠ","ᚢ","ᚦ","ᚱ","ᚲ","ᚷ","ᚹ","ᚺ"].map((r,i)=>{
+            const angle = (i/8)*Math.PI*2 - Math.PI/2;
+            const rx2=62, ry2=50;
+            return <text key={i} x={920+rx2*Math.cos(angle)} y={615+ry2*Math.sin(angle)} fontSize="9" fill="#6a1a9a" fillOpacity="0.6" textAnchor="middle">{r}</text>;
+          })}
+        </g>
+        <text x="920" y="611" fontFamily="'Cinzel',serif" fontWeight="700" fontSize="13" fill="#8a3aba" fillOpacity="0.7" textAnchor="middle" letterSpacing="3" style={{filter:"url(#rm-aged)"}}>NEMNO</text>
+        <text x="920" y="624" fontFamily="'IM Fell English',serif" fontStyle="italic" fontSize="8" fill="#5a1a8a" fillOpacity="0.5" textAnchor="middle">the void</text>
+        {mapMode==="void" && <text x="920" y="672" fontFamily="'Share Tech Mono',monospace" fontSize="8" fill="#6a1a9a" fillOpacity="0.7" textAnchor="middle" letterSpacing="1" style={{animation:"voidPulse 2s ease-in-out infinite"}}>[ THE VOID REMAINS ]</text>}
+
+        {/* Compass rose */}
+        <g transform="translate(940, 68)">
+          <circle cx="0" cy="0" r="32" fill="#e8d8a8" fillOpacity="0.4" stroke="#6a4a1a" strokeWidth="1.2" strokeOpacity="0.5"/>
+          <circle cx="0" cy="0" r="26" fill="none" stroke="#8a6a3a" strokeWidth="0.6" strokeOpacity="0.4"/>
+          <polygon points="0,-22 -4,-8 4,-8" fill="#5a3a1a" fillOpacity="0.8"/>
+          <polygon points="0,-22 -3,-10 3,-10" fill="#8a3020" fillOpacity="0.7"/>
+          <polygon points="0,22 -4,8 4,8" fill="#8a6a4a" fillOpacity="0.6"/>
+          <polygon points="-22,0 -8,-4 -8,4" fill="#8a6a4a" fillOpacity="0.6"/>
+          <polygon points="22,0 8,-4 8,4" fill="#8a6a4a" fillOpacity="0.6"/>
+          <circle cx="0" cy="0" r="3.5" fill="#c4892a" fillOpacity="0.7" stroke="#8a5a1a" strokeWidth="0.8"/>
+          <text x="0" y="-26" fontFamily="'Cinzel',serif" fontSize="9" fill="#4a3010" fillOpacity="0.8" textAnchor="middle" fontWeight="700">N</text>
+          <text x="0" y="32" fontFamily="'Cinzel',serif" fontSize="9" fill="#6a5030" fillOpacity="0.7" textAnchor="middle">S</text>
+          <text x="-29" y="3" fontFamily="'Cinzel',serif" fontSize="9" fill="#6a5030" fillOpacity="0.7" textAnchor="middle">W</text>
+          <text x="29" y="3" fontFamily="'Cinzel',serif" fontSize="9" fill="#6a5030" fillOpacity="0.7" textAnchor="middle">E</text>
+        </g>
+
+        {/* Decorative corners */}
+        <g stroke="#8a6a3a" strokeWidth="1.5" strokeOpacity="0.35" fill="none">
+          <path d="M18,18 L50,18 M18,18 L18,50"/><path d="M24,24 L46,24 M24,24 L24,46"/>
+          <path d="M982,18 L950,18 M982,18 L982,50"/><path d="M976,24 L954,24 M976,24 L976,46"/>
+          <path d="M18,662 L50,662 M18,662 L18,630"/><path d="M24,656 L46,656 M24,656 L24,634"/>
+          <path d="M982,662 L950,662 M982,662 L982,630"/><path d="M976,656 L954,656 M976,656 L976,634"/>
+        </g>
+
+        {/* Current location text if unmatched */}
         {!activeKingdom && location !== "The Five Kingdoms" && (
-          <text x="100" y="155" textAnchor="middle" fill="#3d2e1a" fontSize="6"
-            fontFamily="'IM Fell English',serif" fontStyle="italic">
-            {location.slice(0, 28)}
-          </text>
+          <text x="500" y="660" textAnchor="middle" fill="#3d2e1a" fontSize="9" fontFamily="'IM Fell English',serif" fontStyle="italic" fillOpacity="0.6">{location.slice(0,35)}</text>
         )}
-
-        {/* Realm title watermark */}
-        <text x="100" y="152" textAnchor="middle" fill="#1a1005"
-          fontSize="5.5" fontFamily="'Cinzel',serif" letterSpacing="2">
-          THORNBOUND REALM
-        </text>
       </svg>
 
-      {/* Current location text */}
-      <div style={{ fontSize:"9px", color:"#8b5c1a", fontFamily:"'IM Fell English',serif", fontStyle:"italic", marginTop:"4px", textAlign:"center", lineHeight:1.4 }}>
+      {/* Location label */}
+      <div style={{ fontSize:"8px", color:"#8b5c1a", fontFamily:"'IM Fell English',serif", fontStyle:"italic", marginTop:"4px", textAlign:"center" }}>
         {location}
       </div>
     </div>
@@ -1089,7 +1233,8 @@ function Thornbound() {
   const [endingPhase, setEndingPhase] = useState(0); // 0=dark, 1=icon, 2=title, 3=desc, 4=eulogy, 5=stats, 6=chronicle, 7=full
   const termRef = useRef(null);
   const typingRef = useRef(null);
-  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [musicPlaying, setMusicPlaying] = useState(true);
+  const [customAction, setCustomAction] = useState("");
   const [saveIndicator, setSaveIndicator] = useState(""); // "" | "saving" | "saved"
   const [existingSave, setExistingSave] = useState(null); // save metadata for intro screen
   const [openRouterKey, setOpenRouterKey] = useState(() => getStoredApiKey());
@@ -1102,7 +1247,10 @@ function Thornbound() {
     if (s && s.screen === "game" && s.turn > 0) setExistingSave(s);
   }, []);
 
-  const currentEra = ERAS.find(e => turn >= e.turns[0] && turn <= e.turns[1]) || ERAS[3];
+  // Auto-start music when entering game screen
+  useEffect(() => {
+    if (screen === "game") setMusicPlaying(true);
+  }, [screen]);
   const progress = Math.min(100, Math.round((turn / 90) * 100));
 
   useEffect(() => {
@@ -2124,6 +2272,29 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
                         <span style={{ color:"#4a2a08", marginRight:"10px" }}>[{String.fromCharCode(65 + i)}]</span>{c}
                       </button>
                     ))}
+                    {/* Custom action input */}
+                    <div style={{ marginTop:"14px", display:"flex", gap:"8px", borderTop:"1px solid #0a0600", paddingTop:"14px" }}>
+                      <input
+                        type="text"
+                        placeholder="Or write your own action..."
+                        value={customAction}
+                        onChange={e => setCustomAction(e.target.value)}
+                        onKeyDown={e => { if (e.key==="Enter" && customAction.trim() && !loading && !isTyping) { makeChoice(customAction.trim()); setCustomAction(""); }}}
+                        disabled={loading || isTyping}
+                        style={{ flex:1, background:"#06040a", border:"1px solid #1c1208", borderRadius:"2px", color:"#8a7560", fontSize:"11px", padding:"10px 14px", fontFamily:"'Share Tech Mono',monospace", outline:"none", letterSpacing:"0.3px", transition:"border-color .15s" }}
+                        onFocus={e => e.target.style.borderColor="#8b5c1a"}
+                        onBlur={e => e.target.style.borderColor="#1c1208"}
+                      />
+                      <button
+                        disabled={loading || isTyping || !customAction.trim()}
+                        onClick={() => { makeChoice(customAction.trim()); setCustomAction(""); }}
+                        style={{ background:"#060400", border:"1px solid #1c1208", color:"#4a2a08", fontSize:"9px", padding:"10px 14px", cursor:"pointer", borderRadius:"2px", letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace", transition:"all .15s", flexShrink:0 }}
+                        onMouseEnter={e => { e.target.style.borderColor="#8b5c1a"; e.target.style.color="#c4892a"; }}
+                        onMouseLeave={e => { e.target.style.borderColor="#1c1208"; e.target.style.color="#4a2a08"; }}
+                      >
+                        ACT
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -2147,15 +2318,6 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
             <span style={{ fontSize:"9px", color:"#1a1005", marginLeft:"auto", letterSpacing:"1px" }}>
               {currentEra.name.toUpperCase()}
             </span>
-            {!musicPlaying && (
-              <button
-                onClick={() => setMusicPlaying(true)}
-                style={{ background:"none", border:"1px solid #2a1a08", borderRadius:"2px", cursor:"pointer", color:"#3d2e1a", fontSize:"8px", padding:"2px 7px", letterSpacing:"1px", fontFamily:"'Share Tech Mono',monospace" }}
-                title="Start ambient music"
-              >
-                ♪ MUSIC
-              </button>
-            )}
             {musicPlaying && (
               <AmbientPlayer eraId={currentEra.id} mood={mood} playing={musicPlaying} />
             )}
