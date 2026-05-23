@@ -1,0 +1,2177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thornbound — A Dark Fantasy Chronicle</title>
+  <meta name="description" content="Five kingdoms. One fragile peace. The realm does not care who you are. Only what you choose."/>
+  <style>* { margin:0; padding:0; box-sizing:border-box; } body { background:#000; overflow:hidden; }</style>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback } = React;
+
+
+// ─── WORLD CONSTANTS ──────────────────────────────────────────────────────────
+
+const ERAS = [
+  { id: 1, name: "Gathering Storm",    subtitle: "Alliances form. Knives are sharpened.", turns: [1, 20],  color: "#60a5fa" },
+  { id: 2, name: "Great Betrayal",     subtitle: "Someone you trusted will fall.",         turns: [21, 40], color: "#f59e0b" },
+  { id: 3, name: "War of Five Thorns", subtitle: "The realm burns. Choose a side.",        turns: [41, 65], color: "#f87171" },
+  { id: 4, name: "The Reckoning",      subtitle: "It ends here. One way or another.",      turns: [66, 90], color: "#a855f7" },
+];
+
+const PIVOT_TURNS = [10, 22, 35, 48, 62, 75, 85];
+
+const ENDINGS = {
+  thornbound_king: { title: "The Thornbound King",  color: "#f59e0b", icon: "♛", desc: "You united the five kingdoms under a single crown — yours. Men call it peace. You know what it cost. The Thornbound Pact holds because you hold it, by will and by blood. Long may you reign. Long may they fear you." },
+  shadow_hand:     { title: "The Shadow Hand",      color: "#9333ea", icon: "◆", desc: "No crown. No throne. You are the voice behind every throne — the hand that moves kings without being seen. The realm thinks it governs itself. It doesn't. You do." },
+  exile:           { title: "The Exile",             color: "#94a3b8", icon: "◌", desc: "You walked away. Some call it cowardice. You call it survival. Somewhere beyond the Five Kingdoms, you are no one — and no one is hunting you. Almost." },
+  martyr:          { title: "The Martyr",            color: "#f87171", icon: "✦", desc: "You didn't survive. But the war you started — the truth you bled for — outlasted you. Bards will argue whether it was worth it. You never got to weigh in." },
+  iron_warlord:    { title: "The Iron Warlord",      color: "#ef4444", icon: "⚔", desc: "You didn't unify the kingdoms. You conquered them. There is a difference, you tell yourself, though you are less certain each year. The realm kneels. For now." },
+  great_deceiver:  { title: "The Great Deceiver",    color: "#10b981", icon: "⬡", desc: "You lied to everyone — kings, allies, enemies — and every lie was the right one. History will never know your real name. That's exactly how you planned it." },
+};
+
+const ORIGINS = {
+  bastard_knight: {
+    name: "Bastard Knight",
+    icon: "⚔",
+    desc: "Born of a lord's indiscretion, raised in the yard. You know how to fight. You don't know who to trust.",
+    stats: { vitality: 90, strength: 75, influence: 25, wisdom: 35, honor: 65, darkness: 5 },
+    inventory: ["Worn Longsword", "Dented Pauldron", "Letter of Legitimacy (Disputed)"],
+    startText: "You've spent your whole life proving you belong. Ironmere is where you'll either find your place — or confirm you never had one.",
+  },
+  court_scholar: {
+    name: "Court Scholar",
+    icon: "⬡",
+    desc: "Raised among books and whispered politics. You know secrets. You know how to survive rooms where others die.",
+    stats: { vitality: 60, strength: 25, influence: 55, wisdom: 80, honor: 50, darkness: 10 },
+    inventory: ["Cipher Journal", "Royal Academy Seal", "Vial of Truth-Ink"],
+    startText: "Knowledge is power — until someone with a sword decides otherwise. Caldrath's court is a masterclass in that lesson.",
+  },
+  sellsword: {
+    name: "Sellsword",
+    icon: "◆",
+    desc: "No house. No banner. No loyalty that gold can't buy — until one day, it couldn't. You have a debt and a sword.",
+    stats: { vitality: 85, strength: 80, influence: 20, wisdom: 40, honor: 30, darkness: 20 },
+    inventory: ["Mercenary Contract (Void)", "Throwing Knives ×3", "Ironmere Bounty Notice"],
+    startText: "You've fought for every kingdom in the Five. Now one of them wants you dead. The others might pay to keep you alive — for a while.",
+  },
+  fallen_noble: {
+    name: "Fallen Noble",
+    icon: "★",
+    desc: "Your house was erased. Your name is a curse in the halls you were born to inherit. You remember everything.",
+    stats: { vitality: 70, strength: 45, influence: 60, wisdom: 60, honor: 55, darkness: 15 },
+    inventory: ["Broken House Sigil", "Hidden Ledger (Blackmail)", "Fine Cloak (Threadbare)"],
+    startText: "House Vael burned your family's legacy to the ground. You've spent three years learning why — and who gave the order.",
+  },
+};
+
+// ─── NPC ROSTER ───────────────────────────────────────────────────────────────
+
+const NPC_ROSTER = {
+  aldric_vane:    { name:"Lord Aldric Vane",   icon:"⚖",  role:"Lord of Ironmere",       kingdom:"Ironmere", desc:"Honorable to a fault. The last man playing by the old rules." },
+  mira_ashfen:    { name:"Mira Ashfen",         icon:"◆",  role:"Spymaster of Vael",      kingdom:"Vael",     desc:"Brilliant, loyal to nothing, knows everything you've done." },
+  cael_caldrath:  { name:"Prince Cael Caldrath",icon:"★",  role:"Prince of Caldrath",     kingdom:"Caldrath", desc:"Young, idealistic, doomed — unless someone helps him." },
+  sister_voss:    { name:"Sister Voss",          icon:"✦",  role:"Ember Faith Inquisitor", kingdom:"Ashkeep",  desc:"Believes she's saving souls. She's burning them." },
+  ser_hadron:     { name:"Ser Hadron",           icon:"⚔",  role:"Disgraced Knight",       kingdom:"None",     desc:"Seeks a cause worth dying for. Follows those who earn it." },
+  thornweaver:    { name:"The Thornweaver",      icon:"⬡",  role:"Unknown",                kingdom:"Unknown",  desc:"Appears exactly when it would be most inconvenient." },
+};
+
+const DEFAULT_NPC_STATE = {
+  aldric_vane:   { trust: 50, status: "unknown", lastSeen: "Not yet encountered." },
+  mira_ashfen:   { trust: 50, status: "unknown", lastSeen: "Not yet encountered." },
+  cael_caldrath: { trust: 50, status: "unknown", lastSeen: "Not yet encountered." },
+  sister_voss:   { trust: 50, status: "unknown", lastSeen: "Not yet encountered." },
+  ser_hadron:    { trust: 50, status: "unknown", lastSeen: "Not yet encountered." },
+  thornweaver:   { trust: 50, status: "unknown", lastSeen: "Not yet encountered." },
+};
+
+// ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
+
+const buildSystemPrompt = (turn, era, pivotFlags, stats, origin, npcState) => `
+You are the narrator of THORNBOUND — a brutal, politically complex dark fantasy text RPG.
+
+THE WORLD: Five kingdoms bound by the Thornbound Pact — a fragile peace forged after the last war. Now that peace is unraveling. Kings maneuver. Spymasters scheme. And somewhere in the cracks, the player is choosing who they become.
+
+THE FIVE KINGDOMS:
+- Ironmere — militarist, disciplined, northern. Capital: Varenhold. Cold iron and colder lords.
+- Vael — maritime, merchant-princes, treacherous. Capital: Silvenmoor. Beautiful and poisonous.
+- Caldrath — old blood, ancient magic, decaying grandeur. Capital: Dur Crossing. The oldest kingdom.
+- Duskfen — swamp lords, assassins, heretics. Capital: Mirehold. Everyone fears what they do in the dark.
+- Ashkeep — desert, zealots, warriors of the Ember Faith. Capital: Ashgate. Holy war is always three days away.
+
+CURRENT STATE:
+- Turn: ${turn} (infinite game — no fixed ending)
+- Era: ${era.id} — ${era.name} (${era.subtitle})
+- Era description: ${era.id===1?"Early game: political maneuvering, alliances forming, first blood. The player is gaining a foothold.":era.id===2?"Mid game: someone trusted betrays. Escalation. The Pact fractures. Real stakes.":era.id===3?"Full war: kingdom armies clash. The player's choices from eras 1-2 determine whose side wins or loses.":"Final act: everything converges. The player's full arc bears down on them. Resolution is near."}
+- Player origin: ${origin}
+- Stats: Vitality ${stats.vitality} | Strength ${stats.strength} | Influence ${stats.influence} | Wisdom ${stats.wisdom} | Honor ${stats.honor} | Darkness ${stats.darkness}
+- Key pivotal choices: ${pivotFlags.length > 0 ? pivotFlags.join("; ") : "none yet"}
+- Is pivot turn: ${PIVOT_TURNS.includes(turn) ? "YES — this is a major moral turning point. Make it count." : "no"}
+${stats.honor <= 20 ? "- HONOR BROKEN: The player has crossed a moral threshold they cannot uncross. NPCs sense it. The world treats them differently." : ""}
+${stats.darkness >= 80 ? "- CORRUPTION THRESHOLD: Darkness is critical. The player risks losing themselves entirely. Consider having them experience visions, involuntary violence, or moments of lost control." : ""}
+${stats.vitality <= 15 ? "- NEAR DEATH: Player is critically wounded. Stakes are real and immediate." : ""}
+
+RECURRING NPCs — current relationship state (trust 0–100; status: alive|dead|hostile|unknown):
+- Lord Aldric Vane [aldric_vane]: trust ${npcState.aldric_vane.trust}, status: ${npcState.aldric_vane.status}. Last seen: ${npcState.aldric_vane.lastSeen}
+- Mira Ashfen [mira_ashfen]: trust ${npcState.mira_ashfen.trust}, status: ${npcState.mira_ashfen.status}. Last seen: ${npcState.mira_ashfen.lastSeen}
+- Prince Cael Caldrath [cael_caldrath]: trust ${npcState.cael_caldrath.trust}, status: ${npcState.cael_caldrath.status}. Last seen: ${npcState.cael_caldrath.lastSeen}
+- Sister Voss [sister_voss]: trust ${npcState.sister_voss.trust}, status: ${npcState.sister_voss.status}. Last seen: ${npcState.sister_voss.lastSeen}
+- Ser Hadron [ser_hadron]: trust ${npcState.ser_hadron.trust}, status: ${npcState.ser_hadron.status}. Last seen: ${npcState.ser_hadron.lastSeen}
+- The Thornweaver [thornweaver]: trust ${npcState.thornweaver.trust}, status: ${npcState.thornweaver.status}. Last seen: ${npcState.thornweaver.lastSeen}
+
+NPC RULES:
+- Only update NPCs who actually appeared in this scene.
+- Trust shifts should be earned — ±5 to ±25 per turn depending on what happened. Betrayals are dramatic.
+- Status becomes "dead" only when you explicitly kill them in the narration. Once dead, they stay dead.
+- Status becomes "hostile" when they are actively working against the player but still alive.
+- lastSeen should be a 1-sentence present-tense note: what they did or said this turn.
+
+WRITING RULES:
+- Second-person present tense ("You push open the door...")
+- Atmospheric, precise prose. Literary but never self-indulgent. Make every sentence earn its place.
+- Consequences are real — allies die, plans fail, moral choices echo forward.
+- Four choices per turn, genuinely different — not tone variants, but strategic divergences.
+- On pivot turns: present a true dilemma with no clean answer. Both paths should cost something.
+- Honor ≤ 20 changes how NPCs speak to the player. Darkness ≥ 80 bleeds into the narration itself.
+
+OUTPUT FORMAT — always end with ONLY this JSON block and nothing after it:
+\`\`\`json
+{
+  "choices": ["choice A text", "choice B text", "choice C text", "choice D text"],
+  "statChanges": { "vitality": 0, "strength": 0, "influence": 0, "wisdom": 0, "honor": 0, "darkness": 0 },
+  "inventoryAdd": [],
+  "inventoryRemove": [],
+  "location": "location name",
+  "mood": "tense|calm|mysterious|danger|dark|triumphant|grief|dread|war|intrigue",
+  "isPivot": false,
+  "pivotLabel": "",
+  "gameOver": false,
+  "endingKey": "",
+  "npcUpdates": []
+}
+\`\`\`
+npcUpdates is an array of objects for NPCs who appeared this scene. Each object: { "id": "npc_key", "trustDelta": 0, "status": "alive|dead|hostile|unknown", "lastSeen": "one sentence" }
+Valid npc keys: aldric_vane | mira_ashfen | cael_caldrath | sister_voss | ser_hadron | thornweaver
+If no NPCs appeared, npcUpdates must be [].
+If gameOver is true, endingKey must be one of: thornbound_king | shadow_hand | exile | martyr | iron_warlord | great_deceiver
+If isPivot is true, set pivotLabel to a short label of what the player chose (e.g. "Betrayed Lord Vane").
+When the player's Vitality hits 0, trigger gameOver with an appropriate ending.
+`;
+
+const buildIntroPrompt = (origin) => {
+  const o = ORIGINS[origin];
+  return `Begin Era 1 — Gathering Storm. The player is a ${o.name}. ${o.startText}
+
+Open the game powerfully: establish the world's political tension immediately, drop the player into a specific scene in motion — not a description, but a moment. Someone is speaking, something is happening, a choice is already forming.
+
+Show the Thornbound Pact's fragility in the first scene. Hint at one NPC from the cast. Make Ironmere or Vael feel present and real.
+
+End with exactly 4 choices that feel genuinely different — not just nice/mean but strategically divergent.`;
+};
+
+// ─── STAT / MOOD CONFIG ───────────────────────────────────────────────────────
+
+const STAT_META = {
+  vitality:  { icon: "♥", color: "#4ade80",  label: "VITALITY"  },
+  strength:  { icon: "⚔", color: "#f87171",  label: "STRENGTH"  },
+  influence: { icon: "★", color: "#f59e0b",  label: "INFLUENCE" },
+  wisdom:    { icon: "⬡", color: "#60a5fa",  label: "WISDOM"    },
+  honor:     { icon: "◈", color: "#a78bfa",  label: "HONOR"     },
+  darkness:  { icon: "☽", color: "#9333ea",  label: "DARKNESS"  },
+};
+
+const MOOD_COLORS = {
+  tense:"#f59e0b", calm:"#4ade80", mysterious:"#a78bfa",
+  danger:"#f87171", dark:"#9333ea", triumphant:"#fbbf24",
+  grief:"#94a3b8", dread:"#dc2626", war:"#ef4444", intrigue:"#818cf8",
+};
+
+// ─── AMBIENT MUSIC ────────────────────────────────────────────────────────────
+
+// Kevin MacLeod tracks (freemusicarchive.org / incompetech.com — CC BY 4.0)
+const MUSIC_TRACKS = {
+  // Era tracks — calm ambient base layer
+  era1: { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Virtutes%20Instrumenti.mp3", label: "Virtutes Instrumenti" },
+  era2: { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Scheming%20Weasel%20faster.mp3", label: "Scheming Weasel" },
+  era3: { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Clash%20Defiant.mp3", label: "Clash Defiant" },
+  era4: { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dark%20Times.mp3", label: "Dark Times" },
+  // Mood overrides
+  danger:     { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Volatile%20Reaction.mp3", label: "Volatile Reaction" },
+  dark:       { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Thatched%20Villagers.mp3", label: "Thatched Villagers" },
+  dread:      { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Corrupted.mp3", label: "Corrupted" },
+  grief:      { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sonatina%20in%20C%20Minor.mp3", label: "Sonatina in C Minor" },
+  war:        { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Epic%20Unease.mp3", label: "Epic Unease" },
+  triumphant: { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Rejoicing.mp3", label: "Rejoicing" },
+  intrigue:   { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sneaky%20Snitch.mp3", label: "Sneaky Snitch" },
+};
+
+const MOOD_OVERRIDES = new Set(["danger","dark","dread","grief","war","triumphant","intrigue"]);
+
+function AmbientPlayer({ eraId, mood, playing }) {
+  const audioRef = useRef(null);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.35);
+  const [trackLabel, setTrackLabel] = useState("");
+  const [canPlay, setCanPlay] = useState(false);
+  const currentUrlRef = useRef("");
+
+  const getTrack = () => {
+    if (MOOD_OVERRIDES.has(mood) && MUSIC_TRACKS[mood]) return MUSIC_TRACKS[mood];
+    return MUSIC_TRACKS[`era${eraId}`] || MUSIC_TRACKS.era1;
+  };
+
+  useEffect(() => {
+    const track = getTrack();
+    if (track.url === currentUrlRef.current) return;
+    currentUrlRef.current = track.url;
+    setTrackLabel(track.label);
+    setCanPlay(false);
+    const audio = audioRef.current;
+    if (!audio) return;
+    const prevVol = audio.volume;
+    // Fade out old
+    const fadeOut = setInterval(() => {
+      if (audio.volume > 0.02) audio.volume = Math.max(0, audio.volume - 0.04);
+      else {
+        clearInterval(fadeOut);
+        audio.pause();
+        audio.src = track.url;
+        audio.loop = true;
+        audio.volume = 0;
+        if (playing && !muted) {
+          audio.play().catch(() => {});
+        }
+        // Fade in new
+        const fadeIn = setInterval(() => {
+          if (audio.volume < volume - 0.02) audio.volume = Math.min(volume, audio.volume + 0.02);
+          else { audio.volume = volume; clearInterval(fadeIn); }
+        }, 60);
+      }
+    }, 60);
+    return () => clearInterval(fadeOut);
+  }, [eraId, mood]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = muted ? 0 : volume;
+  }, [muted, volume]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !canPlay) return;
+    if (playing && !muted) audio.play().catch(() => {});
+    else audio.pause();
+  }, [playing, canPlay]);
+
+  const handleCanPlay = () => {
+    setCanPlay(true);
+    if (playing && !muted && audioRef.current) {
+      audioRef.current.volume = volume;
+      audioRef.current.play().catch(() => {});
+    }
+  };
+
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+      <audio ref={audioRef} loop onCanPlay={handleCanPlay} preload="none"/>
+      <button
+        onClick={() => setMuted(m => !m)}
+        style={{ background:"none", border:"none", cursor:"pointer", color: muted ? "#2d2316" : "#8b5c1a", fontSize:"12px", padding:"2px 4px", lineHeight:1 }}
+        title={muted ? "Unmute" : "Mute"}
+      >
+        {muted ? "🔇" : "🔊"}
+      </button>
+      <input
+        type="range" min="0" max="1" step="0.05"
+        value={muted ? 0 : volume}
+        onChange={e => { setVolume(Number(e.target.value)); setMuted(Number(e.target.value) === 0); }}
+        style={{ width:"48px", accentColor:"#8b5c1a", cursor:"pointer" }}
+        title="Volume"
+      />
+      {trackLabel && (
+        <span style={{ fontSize:"8px", color:"#2d2316", letterSpacing:"0.5px", maxWidth:"90px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+          ♪ {trackLabel}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── REALM MAP ────────────────────────────────────────────────────────────────
+
+// Five Kingdoms SVG map — hand-drawn political regions
+// location string → kingdom key matching
+const LOCATION_KINGDOM_MAP = [
+  { key:"ironmere",  keywords:["ironmere","varenhold","iron","northern","north"] },
+  { key:"vael",      keywords:["vael","silvenmoor","maritime","merchant","silver"] },
+  { key:"caldrath",  keywords:["caldrath","dur crossing","dur","ancient","old blood"] },
+  { key:"duskfen",   keywords:["duskfen","mirehold","mire","swamp","fen","dark"] },
+  { key:"ashkeep",   keywords:["ashkeep","ashgate","ash","desert","ember","zealot"] },
+];
+
+function detectKingdom(locationStr) {
+  if (!locationStr) return null;
+  const lower = locationStr.toLowerCase();
+  for (const k of LOCATION_KINGDOM_MAP) {
+    if (k.keywords.some(w => lower.includes(w))) return k.key;
+  }
+  return null;
+}
+
+function RealmMap({ location, currentEra }) {
+  const activeKingdom = detectKingdom(location);
+
+  // Kingdom region definitions (SVG path polygons in a 200×180 viewBox)
+  const kingdoms = {
+    ironmere: {
+      label: "IRONMERE", capital: "Varenhold",
+      path: "M20 10 L100 10 L105 20 L95 55 L80 70 L60 65 L30 70 L15 50 Z",
+      cx: 58, cy: 38, color: "#60a5fa",
+    },
+    caldrath: {
+      label: "CALDRATH", capital: "Dur Crossing",
+      path: "M100 10 L180 10 L185 55 L170 70 L140 65 L105 20 L95 55 Z",
+      cx: 140, cy: 38, color: "#a78bfa",
+    },
+    vael: {
+      label: "VAEL", capital: "Silvenmoor",
+      path: "M15 50 L30 70 L60 65 L80 70 L75 110 L50 130 L20 120 L10 80 Z",
+      cx: 44, cy: 92, color: "#34d399",
+    },
+    duskfen: {
+      label: "DUSKFEN", capital: "Mirehold",
+      path: "M80 70 L95 55 L105 20 L140 65 L150 80 L135 120 L110 130 L90 115 L75 110 Z",
+      cx: 112, cy: 92, color: "#f59e0b",
+    },
+    ashkeep: {
+      label: "ASHKEEP", capital: "Ashgate",
+      path: "M140 65 L170 70 L185 55 L195 90 L185 135 L160 145 L135 120 L150 80 Z",
+      cx: 162, cy: 105, color: "#f87171",
+    },
+  };
+
+  // Thorn road paths connecting capitals
+  const roads = [
+    "M58 38 L112 92", // Ironmere — Duskfen
+    "M140 38 L112 92", // Caldrath — Duskfen
+    "M44 92 L112 92",  // Vael — Duskfen
+    "M112 92 L162 105", // Duskfen — Ashkeep
+    "M58 38 L44 92",  // Ironmere — Vael
+    "M140 38 L162 105", // Caldrath — Ashkeep
+  ];
+
+  return (
+    <div style={{ padding:"10px 8px 6px" }}>
+      <div style={{ fontSize:"8px", color:"#2d2316", letterSpacing:"2px", marginBottom:"8px" }}>THE FIVE KINGDOMS</div>
+      <svg viewBox="0 0 200 160" width="100%" style={{ display:"block", maxHeight:"160px" }}>
+        <defs>
+          <filter id="mapGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <pattern id="mapHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="6" stroke="#1a1005" strokeWidth="0.5"/>
+          </pattern>
+        </defs>
+
+        {/* Ocean / background */}
+        <rect width="200" height="160" fill="#03010a"/>
+        <rect width="200" height="160" fill="url(#mapHatch)" opacity="0.4"/>
+
+        {/* Kingdom regions */}
+        {Object.entries(kingdoms).map(([key, k]) => {
+          const isActive = activeKingdom === key;
+          const eraColor = currentEra?.color || "#8b5c1a";
+          return (
+            <g key={key}>
+              <path
+                d={k.path}
+                fill={isActive ? k.color : "#0d0800"}
+                stroke={isActive ? k.color : "#2a1a08"}
+                strokeWidth={isActive ? "1.5" : "0.8"}
+                opacity={isActive ? 0.25 : 0.9}
+              />
+              {isActive && (
+                <path d={k.path} fill="none" stroke={k.color} strokeWidth="1.5"
+                  opacity="0.7" filter="url(#mapGlow)"/>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Thornbound roads */}
+        {roads.map((d, i) => (
+          <path key={i} d={d} stroke="#2a1a08" strokeWidth="0.6" fill="none" strokeDasharray="3,3" opacity="0.5"/>
+        ))}
+
+        {/* Capital dots + labels */}
+        {Object.entries(kingdoms).map(([key, k]) => {
+          const isActive = activeKingdom === key;
+          return (
+            <g key={key}>
+              <circle
+                cx={k.cx} cy={k.cy} r={isActive ? 4 : 2.5}
+                fill={isActive ? k.color : "#3d2e1a"}
+                stroke={isActive ? k.color : "#1a1005"}
+                strokeWidth="0.8"
+                opacity={isActive ? 1 : 0.7}
+                filter={isActive ? "url(#mapGlow)" : undefined}
+              />
+              {isActive && (
+                <circle cx={k.cx} cy={k.cy} r="7" fill={k.color} opacity="0.12"
+                  style={{ animation:"voidPulse 2s ease infinite" }}/>
+              )}
+              <text x={k.cx} y={k.cy - 7} textAnchor="middle"
+                fill={isActive ? k.color : "#3d2e1a"}
+                fontSize="6" fontFamily="'Share Tech Mono',monospace"
+                letterSpacing="0.5"
+                opacity={isActive ? 1 : 0.6}
+              >
+                {k.label}
+              </text>
+              {isActive && (
+                <text x={k.cx} y={k.cy + 14} textAnchor="middle"
+                  fill={k.color} fontSize="5" fontFamily="'IM Fell English',serif"
+                  fontStyle="italic" opacity="0.8"
+                >
+                  {k.capital}
+                </text>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Current location label at bottom if unmatched */}
+        {!activeKingdom && location !== "The Five Kingdoms" && (
+          <text x="100" y="155" textAnchor="middle" fill="#3d2e1a" fontSize="6"
+            fontFamily="'IM Fell English',serif" fontStyle="italic">
+            {location.slice(0, 28)}
+          </text>
+        )}
+
+        {/* Realm title watermark */}
+        <text x="100" y="152" textAnchor="middle" fill="#1a1005"
+          fontSize="5.5" fontFamily="'Cinzel',serif" letterSpacing="2">
+          THORNBOUND REALM
+        </text>
+      </svg>
+
+      {/* Current location text */}
+      <div style={{ fontSize:"9px", color:"#8b5c1a", fontFamily:"'IM Fell English',serif", fontStyle:"italic", marginTop:"4px", textAlign:"center", lineHeight:1.4 }}>
+        {location}
+      </div>
+    </div>
+  );
+}
+
+// ─── PARCHMENT SCROLL ─────────────────────────────────────────────────────────
+
+const ERA_GLYPHS = { 1:"᛭", 2:"ᚦ", 3:"ᚢ", 4:"ᚱ" };
+const ERA_NAMES  = { 1:"Gathering Storm", 2:"Great Betrayal", 3:"War of Five Thorns", 4:"The Reckoning" };
+const ERA_COLORS = { 1:"#60a5fa", 2:"#f59e0b", 3:"#f87171", 4:"#a855f7" };
+const ROMAN = ["","I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV",
+  "XVI","XVII","XVIII","XIX","XX","XXI","XXII","XXIII","XXIV","XXV","XXVI","XXVII","XXVIII","XXIX","XXX"];
+const toRoman = n => n <= 30 ? ROMAN[n] : `T${n}`;
+
+function ParchmentScroll({ choiceLog, pivotFlags }) {
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [choiceLog.length]);
+
+  // Build pivot set for quick lookup
+  const pivotTurns = new Set(pivotFlags.map(f => {
+    const m = f.match(/^T(\d+)/); return m ? parseInt(m[1]) : -1;
+  }));
+
+  // Group entries — insert era dividers when era changes
+  const rendered = [];
+  let lastEra = null;
+  choiceLog.forEach((entry, i) => {
+    if (entry.era !== lastEra) {
+      rendered.push({ type:"divider", era: entry.era, key:`div-${entry.era}-${i}` });
+      lastEra = entry.era;
+    }
+    rendered.push({ type:"entry", ...entry, index: i, key:`entry-${i}` });
+  });
+
+  const inkColors = ["#3d2e1a","#3a2c18","#382a16","#3c2f1c"];
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", margin:"-14px" }}>
+      <style>{`
+        @keyframes quillWrite {
+          from { opacity:0; transform:translateY(8px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+        @keyframes inkSpread {
+          from { opacity:0; transform:scale(.92); }
+          to   { opacity:1; transform:scale(1); }
+        }
+        .scroll-entry { animation: quillWrite .4s ease forwards; }
+        .scroll-divider { animation: inkSpread .5s ease forwards; }
+      `}</style>
+
+      {/* Scroll top torn edge */}
+      <svg viewBox="0 0 210 18" width="100%" style={{ display:"block", flexShrink:0, marginBottom:"-2px" }}>
+        <defs>
+          <filter id="parchTear">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise"/>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+        </defs>
+        <path d="M0 18 Q12 8 24 14 Q36 4 48 12 Q60 2 72 10 Q84 4 96 14 Q108 6 120 12 Q132 2 144 10 Q156 4 168 14 Q180 6 192 12 Q204 4 210 10 L210 18 Z"
+          fill="#0d0800" filter="url(#parchTear)"/>
+        <path d="M0 18 Q14 10 26 16 Q40 6 52 14 Q64 4 76 12 Q90 6 102 15 Q114 7 126 13 Q140 4 152 12 Q164 6 176 14 Q190 5 202 13 L210 10 L210 18 Z"
+          fill="#120a00" opacity="0.7"/>
+      </svg>
+
+      {/* Scroll body */}
+      <div ref={scrollRef} style={{
+        flex:1,
+        overflowY:"auto",
+        background:"linear-gradient(180deg, #0d0800 0%, #0a0600 40%, #0d0800 100%)",
+        padding:"12px 14px",
+        position:"relative",
+      }}>
+        {/* Parchment texture overlays */}
+        <div style={{
+          position:"absolute", inset:0, pointerEvents:"none", zIndex:0,
+          backgroundImage:`
+            radial-gradient(ellipse at 20% 30%, rgba(80,50,10,0.06) 0%, transparent 60%),
+            radial-gradient(ellipse at 80% 70%, rgba(60,35,8,0.08) 0%, transparent 50%),
+            radial-gradient(ellipse at 50% 50%, rgba(40,25,5,0.04) 0%, transparent 80%)
+          `
+        }}/>
+
+        {/* Ink stain splotches */}
+        <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none", zIndex:0, opacity:0.4 }}>
+          <ellipse cx="85%" cy="15%" rx="12" ry="8" fill="#1a0800" opacity="0.5" transform="rotate(-15,0,0)"/>
+          <ellipse cx="10%" cy="60%" rx="8"  ry="5"  fill="#140600" opacity="0.4"/>
+          <ellipse cx="70%" cy="85%" rx="10" ry="6"  fill="#180900" opacity="0.45" transform="rotate(10,0,0)"/>
+        </svg>
+
+        {/* Vertical ruled line — like a quill manuscript */}
+        <div style={{
+          position:"absolute", left:"34px", top:0, bottom:0,
+          width:"1px", background:"rgba(80,50,15,0.15)", zIndex:0, pointerEvents:"none"
+        }}/>
+
+        {/* Wax seal header */}
+        <div style={{ position:"relative", zIndex:1, textAlign:"center", marginBottom:"14px", paddingBottom:"12px",
+          borderBottom:"1px solid rgba(80,50,10,0.25)" }}>
+          <div style={{
+            display:"inline-flex", alignItems:"center", justifyContent:"center",
+            width:"32px", height:"32px", borderRadius:"50%",
+            background:"radial-gradient(circle, #5a0a0a 0%, #3a0606 60%, #1a0303 100%)",
+            border:"1px solid #8b1a1a40", marginBottom:"6px",
+            boxShadow:"0 0 8px rgba(139,26,26,0.3), inset 0 1px 2px rgba(255,100,100,0.1)"
+          }}>
+            <span style={{ fontSize:"13px", color:"#c0392b", opacity:.85 }}>⚔</span>
+          </div>
+          <div style={{ fontSize:"7px", color:"#3d2010", letterSpacing:"3px" }}>CHRONICLE OF DEEDS</div>
+        </div>
+
+        {/* Entries */}
+        <div style={{ position:"relative", zIndex:1 }}>
+          {choiceLog.length === 0 && (
+            <div style={{
+              textAlign:"center", padding:"20px 10px",
+              fontFamily:"'IM Fell English',serif", fontStyle:"italic",
+              fontSize:"10px", color:"#2d1a08", lineHeight:1.8
+            }}>
+              The scribe waits.<br/>No deeds yet written.
+            </div>
+          )}
+
+          {rendered.map((item, ri) => {
+            if (item.type === "divider") {
+              const eraColor = ERA_COLORS[item.era] || "#8b5c1a";
+              return (
+                <div key={item.key} className="scroll-divider" style={{
+                  margin:"14px 0 12px", display:"flex", alignItems:"center", gap:"8px",
+                  animationDelay:`${ri * 0.04}s`
+                }}>
+                  <div style={{ flex:1, height:"1px", background:`linear-gradient(90deg,transparent,${eraColor}30)` }}/>
+                  <div style={{ fontSize:"7px", color:eraColor, letterSpacing:"2px", opacity:.8,
+                    fontFamily:"'Cinzel',serif", whiteSpace:"nowrap" }}>
+                    {ERA_GLYPHS[item.era]} {ERA_NAMES[item.era]?.toUpperCase()}
+                  </div>
+                  <div style={{ flex:1, height:"1px", background:`linear-gradient(90deg,${eraColor}30,transparent)` }}/>
+                </div>
+              );
+            }
+
+            const isPivot = pivotTurns.has(item.turn);
+            const inkColor = inkColors[item.index % inkColors.length];
+            const isNewest = item.index === choiceLog.length - 1;
+
+            return (
+              <div key={item.key} className={isNewest ? "scroll-entry" : ""} style={{
+                display:"flex", gap:"10px", marginBottom:"10px",
+                paddingBottom:"9px",
+                borderBottom:"1px solid rgba(50,30,8,0.15)",
+                animationDelay:`${ri * 0.04}s`,
+                position:"relative",
+              }}>
+                {/* Pivot mark in margin */}
+                <div style={{ width:"20px", flexShrink:0, textAlign:"right", paddingTop:"1px" }}>
+                  {isPivot
+                    ? <span style={{ fontSize:"8px", color:"#8b1a1a", opacity:.9 }}>✦</span>
+                    : <span style={{ fontSize:"7px", color:"#2d1a08", fontFamily:"'Cinzel',serif", opacity:.7 }}>
+                        {toRoman(item.turn)}
+                      </span>
+                  }
+                </div>
+
+                {/* Entry text */}
+                <div style={{ flex:1 }}>
+                  {isPivot && (
+                    <div style={{ fontSize:"7px", color:"#8b1a1a", letterSpacing:"1.5px",
+                      marginBottom:"3px", fontFamily:"'Share Tech Mono',monospace" }}>
+                      ✦ PIVOTAL CHOICE
+                    </div>
+                  )}
+                  <div style={{
+                    fontFamily:"'IM Fell English',serif",
+                    fontStyle:"italic",
+                    fontSize:"10px",
+                    lineHeight:1.75,
+                    color: isPivot ? "#5a3520" : inkColor,
+                  }}>
+                    {item.text}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Scroll bottom torn edge */}
+      <svg viewBox="0 0 210 18" width="100%" style={{ display:"block", flexShrink:0, marginTop:"-2px" }}>
+        <path d="M0 0 Q15 10 28 4 Q42 14 55 6 Q68 16 82 8 Q96 2 110 10 Q124 16 138 6 Q152 12 166 4 Q180 14 194 6 L210 8 L210 0 Z"
+          fill="#0d0800"/>
+        <path d="M0 0 Q12 8 24 3 Q38 12 50 5 Q64 14 78 6 Q92 2 106 9 Q120 15 134 5 Q148 11 162 3 Q176 13 190 5 L210 6 L210 0 Z"
+          fill="#120a00" opacity="0.6"/>
+      </svg>
+    </div>
+  );
+}
+
+// ─── CHARACTER PORTRAIT ───────────────────────────────────────────────────────
+
+const ORIGIN_SVGS = {
+  bastard_knight: ({ dark, honor, vitality }) => {
+    const crack1 = dark >= 25;
+    const crack2 = dark >= 45;
+    const eyeGlow = dark >= 55;
+    const shadowBleed = dark >= 35;
+    const dissolve = dark >= 75;
+    const consumed = dark >= 90;
+    const ashColor = honor <= 25 ? "#5a5a5a" : "#c8a882";
+    const bodyColor = honor <= 25 ? "#3d3d3d" : "#8b6840";
+    const dim = vitality <= 20;
+
+    return (
+      <g>
+        {/* Helm */}
+        <ellipse cx="50" cy="22" rx="14" ry="16" fill={bodyColor} opacity={dim ? 0.5 : 1}/>
+        <rect x="36" y="24" width="28" height="8" rx="2" fill={ashColor} opacity={dim ? 0.5 : 0.9}/>
+        {/* Face slot */}
+        <rect x="40" y="26" width="20" height="4" rx="1" fill="#0a0500"/>
+        {/* Eye glow */}
+        {eyeGlow && <ellipse cx="46" cy="28" rx="2.5" ry="1.2" fill="#9333ea" opacity="0.9" filter="url(#glow)"/>}
+        {eyeGlow && <ellipse cx="54" cy="28" rx="2.5" ry="1.2" fill="#9333ea" opacity="0.9" filter="url(#glow)"/>}
+        {/* Neck */}
+        <rect x="44" y="38" width="12" height="8" fill={bodyColor} opacity={dim ? 0.4 : 0.8}/>
+        {/* Pauldrons */}
+        <ellipse cx="33" cy="50" rx="10" ry="6" fill={ashColor} opacity={dim ? 0.4 : 0.85}/>
+        <ellipse cx="67" cy="50" rx="10" ry="6" fill={ashColor} opacity={dim ? 0.4 : 0.85}/>
+        {/* Chest plate */}
+        <path d="M36 46 Q50 42 64 46 L68 80 Q50 85 32 80 Z" fill={bodyColor} opacity={dim ? 0.5 : 0.9}/>
+        {/* Chest line detail */}
+        <line x1="50" y1="46" x2="50" y2="80" stroke={ashColor} strokeWidth="1" opacity="0.3"/>
+        {/* Arms */}
+        <rect x="22" y="52" width="10" height="28" rx="4" fill={bodyColor} opacity={dim ? 0.4 : 0.8}/>
+        <rect x="68" y="52" width="10" height="28" rx="4" fill={bodyColor} opacity={dim ? 0.4 : 0.8}/>
+        {/* Sword hilt */}
+        <rect x="71" y="75" width="4" height="28" rx="1" fill={ashColor} opacity={dim ? 0.4 : 0.7}/>
+        <rect x="67" y="79" width="12" height="3" rx="1" fill={ashColor} opacity="0.6"/>
+        {/* Legs */}
+        <rect x="37" y="80" width="13" height="28" rx="3" fill={bodyColor} opacity={dim ? 0.4 : 0.8}/>
+        <rect x="50" y="80" width="13" height="28" rx="3" fill={bodyColor} opacity={dim ? 0.4 : 0.8}/>
+        {/* Boots */}
+        <ellipse cx="43" cy="108" rx="8" ry="4" fill={ashColor} opacity={dim ? 0.3 : 0.7}/>
+        <ellipse cx="57" cy="108" rx="8" ry="4" fill={ashColor} opacity={dim ? 0.3 : 0.7}/>
+        {/* Cracks */}
+        {crack1 && <path d="M44 30 L42 50 L46 65" stroke="#9333ea" strokeWidth="0.8" fill="none" opacity="0.5"/>}
+        {crack2 && <path d="M56 28 L59 48 L54 70 L58 85" stroke="#9333ea" strokeWidth="0.8" fill="none" opacity="0.5"/>}
+        {crack2 && <path d="M45 65 L40 75 L44 90" stroke="#4a0a6a" strokeWidth="0.6" fill="none" opacity="0.4"/>}
+        {/* Shadow bleed */}
+        {shadowBleed && <ellipse cx="50" cy="75" rx="18" ry="30" fill="#1a0028" opacity="0.35" filter="url(#shadow)"/>}
+        {/* Dissolve tendrils */}
+        {dissolve && <>
+          <path d="M32 55 Q20 45 15 35" stroke="#6b21a8" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3,3"/>
+          <path d="M68 60 Q80 50 85 38" stroke="#6b21a8" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3,3"/>
+          <path d="M40 85 Q28 95 22 108" stroke="#4a0080" strokeWidth="1" fill="none" opacity="0.4" strokeDasharray="2,4"/>
+          <path d="M60 88 Q72 98 78 110" stroke="#4a0080" strokeWidth="1" fill="none" opacity="0.4" strokeDasharray="2,4"/>
+        </>}
+        {/* Consumed — void eating the figure */}
+        {consumed && <ellipse cx="50" cy="60" rx="24" ry="50" fill="url(#void)" opacity="0.65"/>}
+      </g>
+    );
+  },
+  court_scholar: ({ dark, honor, vitality }) => {
+    const eyeGlow = dark >= 55;
+    const crack1 = dark >= 25;
+    const dissolve = dark >= 75;
+    const consumed = dark >= 90;
+    const ashColor = honor <= 25 ? "#5a5a5a" : "#b8956a";
+    const robeColor = honor <= 25 ? "#3a3a4a" : "#2a2a5a";
+    const dim = vitality <= 20;
+    return (
+      <g>
+        {/* Hood */}
+        <path d="M34 10 Q50 4 66 10 Q70 25 68 35 Q50 38 32 35 Q30 25 34 10 Z" fill={robeColor} opacity={dim ? 0.5 : 0.9}/>
+        {/* Face */}
+        <ellipse cx="50" cy="28" rx="10" ry="12" fill={honor <= 25 ? "#4a4a4a" : "#c8a070"} opacity={dim ? 0.5 : 1}/>
+        {/* Eyes */}
+        {eyeGlow
+          ? <><ellipse cx="45" cy="27" rx="2.5" ry="1.5" fill="#60a5fa" opacity="0.95" filter="url(#glow)"/>
+              <ellipse cx="55" cy="27" rx="2.5" ry="1.5" fill="#60a5fa" opacity="0.95" filter="url(#glow)"/></>
+          : <><ellipse cx="45" cy="27" rx="1.5" ry="1" fill="#1a1a3a"/><ellipse cx="55" cy="27" rx="1.5" ry="1" fill="#1a1a3a"/></>
+        }
+        {/* Robes — wide */}
+        <path d="M32 38 Q50 34 68 38 L76 110 Q50 116 24 110 Z" fill={robeColor} opacity={dim ? 0.4 : 0.85}/>
+        {/* Belt / sash */}
+        <rect x="30" y="62" width="40" height="5" rx="2" fill={ashColor} opacity="0.6"/>
+        {/* Book held in right arm */}
+        <rect x="62" y="55" width="16" height="20" rx="2" fill={honor <= 25 ? "#555" : "#8b3a1a"} opacity={dim ? 0.3 : 0.8}/>
+        <line x1="62" y1="65" x2="78" y2="65" stroke={ashColor} strokeWidth="0.5" opacity="0.5"/>
+        {/* Staff in left hand */}
+        <rect x="22" y="40" width="3" height="68" rx="1" fill={ashColor} opacity={dim ? 0.3 : 0.7}/>
+        <ellipse cx="23" cy="38" rx="5" ry="5" fill={eyeGlow ? "#60a5fa" : ashColor} opacity={eyeGlow ? 0.9 : 0.6} filter={eyeGlow ? "url(#glow)" : undefined}/>
+        {/* Robe trim */}
+        <path d="M24 110 Q50 116 76 110" stroke={ashColor} strokeWidth="1" fill="none" opacity="0.4"/>
+        {crack1 && <path d="M50 35 L47 55 L52 70 L48 90" stroke="#9333ea" strokeWidth="0.8" fill="none" opacity="0.45"/>}
+        {dissolve && <>
+          <path d="M32 42 Q18 32 12 20" stroke="#6b21a8" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3,3"/>
+          <path d="M68 42 Q82 32 88 20" stroke="#6b21a8" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3,3"/>
+        </>}
+        {consumed && <ellipse cx="50" cy="65" rx="26" ry="52" fill="url(#void)" opacity="0.6"/>}
+      </g>
+    );
+  },
+  sellsword: ({ dark, honor, vitality }) => {
+    const eyeGlow = dark >= 55;
+    const crack1 = dark >= 25;
+    const crack2 = dark >= 50;
+    const dissolve = dark >= 75;
+    const consumed = dark >= 90;
+    const ashColor = honor <= 25 ? "#555" : "#9a7a50";
+    const bodyColor = honor <= 25 ? "#3a3a3a" : "#4a3825";
+    const leatherColor = honor <= 25 ? "#444" : "#6b4825";
+    const dim = vitality <= 20;
+    return (
+      <g>
+        {/* Head — wrapped/scarred */}
+        <ellipse cx="50" cy="20" rx="13" ry="14" fill={honor <= 25 ? "#5a5050" : "#c09060"} opacity={dim ? 0.5 : 1}/>
+        {/* Scar across face */}
+        <path d="M40 18 L56 24" stroke="#8b2020" strokeWidth="1.2" opacity="0.7"/>
+        {eyeGlow
+          ? <ellipse cx="45" cy="19" rx="2.5" ry="1.5" fill="#f87171" opacity="0.9" filter="url(#glow)"/>
+          : <ellipse cx="45" cy="19" rx="1.5" ry="1" fill="#1a0a0a"/>}
+        {/* Headwrap */}
+        <path d="M37 12 Q50 8 63 12 Q65 16 63 18 Q50 16 37 18 Z" fill={bodyColor} opacity="0.6"/>
+        {/* Neck / collar */}
+        <rect x="43" y="34" width="14" height="7" rx="2" fill={leatherColor} opacity={dim ? 0.4 : 0.8}/>
+        {/* Chest — layered leather */}
+        <path d="M33 42 Q50 38 67 42 L70 82 Q50 87 30 82 Z" fill={leatherColor} opacity={dim ? 0.4 : 0.85}/>
+        <path d="M38 42 Q50 40 62 42 L64 75 Q50 80 36 75 Z" fill={bodyColor} opacity={dim ? 0.3 : 0.5}/>
+        {/* Belt with pouches */}
+        <rect x="30" y="80" width="40" height="6" rx="2" fill={ashColor} opacity="0.7"/>
+        <rect x="32" y="78" width="8" height="10" rx="1" fill={bodyColor} opacity="0.8"/>
+        <rect x="60" y="78" width="8" height="10" rx="1" fill={bodyColor} opacity="0.8"/>
+        {/* Arms */}
+        <rect x="20" y="44" width="12" height="30" rx="4" fill={leatherColor} opacity={dim ? 0.4 : 0.8}/>
+        <rect x="68" y="44" width="12" height="30" rx="4" fill={leatherColor} opacity={dim ? 0.4 : 0.8}/>
+        {/* Two swords — crossed on back visible at sides */}
+        <rect x="15" y="30" width="3" height="55" rx="1" fill={ashColor} opacity={dim ? 0.3 : 0.65} transform="rotate(-10,16,57)"/>
+        <rect x="82" y="30" width="3" height="55" rx="1" fill={ashColor} opacity={dim ? 0.3 : 0.65} transform="rotate(10,84,57)"/>
+        {/* Legs — trousers + boots */}
+        <rect x="34" y="85" width="14" height="25" rx="3" fill={bodyColor} opacity={dim ? 0.4 : 0.8}/>
+        <rect x="52" y="85" width="14" height="25" rx="3" fill={bodyColor} opacity={dim ? 0.4 : 0.8}/>
+        <ellipse cx="41" cy="110" rx="9" ry="4" fill={leatherColor} opacity={dim ? 0.3 : 0.7}/>
+        <ellipse cx="59" cy="110" rx="9" ry="4" fill={leatherColor} opacity={dim ? 0.3 : 0.7}/>
+        {crack1 && <path d="M48 22 L44 42 L48 60" stroke="#f87171" strokeWidth="0.9" fill="none" opacity="0.5"/>}
+        {crack2 && <path d="M52 38 L56 55 L52 78" stroke="#9333ea" strokeWidth="0.8" fill="none" opacity="0.4"/>}
+        {dissolve && <>
+          <path d="M20 50 Q8 42 4 28" stroke="#6b21a8" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3,3"/>
+          <path d="M80 50 Q92 42 96 28" stroke="#6b21a8" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3,3"/>
+          <path d="M34 90 Q22 100 18 112" stroke="#4a0080" strokeWidth="1" fill="none" opacity="0.4" strokeDasharray="2,4"/>
+        </>}
+        {consumed && <ellipse cx="50" cy="60" rx="26" ry="54" fill="url(#void)" opacity="0.65"/>}
+      </g>
+    );
+  },
+  fallen_noble: ({ dark, honor, vitality }) => {
+    const eyeGlow = dark >= 55;
+    const crack1 = dark >= 25;
+    const crack2 = dark >= 50;
+    const dissolve = dark >= 75;
+    const consumed = dark >= 90;
+    const ashColor = honor <= 25 ? "#5a5a5a" : "#d4a85a";
+    const bodyColor = honor <= 25 ? "#3a3530" : "#4a3520";
+    const cloakColor = honor <= 25 ? "#252525" : "#1a1a2a";
+    const dim = vitality <= 20;
+    return (
+      <g>
+        {/* Cloak — sweeping behind */}
+        <path d="M24 42 Q16 70 20 115 Q50 120 80 115 Q84 70 76 42 Q50 38 24 42 Z" fill={cloakColor} opacity={dim ? 0.4 : 0.7}/>
+        {/* Head */}
+        <ellipse cx="50" cy="20" rx="13" ry="15" fill={honor <= 25 ? "#666" : "#c8a070"} opacity={dim ? 0.5 : 1}/>
+        {/* Crown — broken */}
+        <path d="M38 12 L40 6 L45 10 L50 4 L55 10 L60 6 L62 12" stroke={ashColor} strokeWidth="1.5" fill="none" opacity={honor <= 25 ? 0.3 : 0.7}/>
+        {/* Break in crown */}
+        <line x1="53" y1="7" x2="57" y2="12" stroke="#000" strokeWidth="2"/>
+        {/* Eyes */}
+        {eyeGlow
+          ? <><ellipse cx="45" cy="20" rx="2.5" ry="1.5" fill="#f59e0b" opacity="0.95" filter="url(#glow)"/>
+              <ellipse cx="55" cy="20" rx="2.5" ry="1.5" fill="#f59e0b" opacity="0.95" filter="url(#glow)"/></>
+          : <><ellipse cx="45" cy="20" rx="1.5" ry="1" fill="#1a1005"/><ellipse cx="55" cy="20" rx="1.5" ry="1" fill="#1a1005"/></>
+        }
+        {/* Fine tunic under cloak */}
+        <path d="M34 40 Q50 36 66 40 L68 85 Q50 90 32 85 Z" fill={bodyColor} opacity={dim ? 0.4 : 0.85}/>
+        {/* Noble trim — frayed */}
+        <path d="M34 40 Q50 37 66 40" stroke={ashColor} strokeWidth="1" fill="none" opacity="0.5"/>
+        <path d="M32 85 Q50 90 68 85" stroke={ashColor} strokeWidth="1" fill="none" opacity="0.4"/>
+        {/* Sigil — broken on chest */}
+        <circle cx="50" cy="60" r="8" fill="none" stroke={ashColor} strokeWidth="0.8" opacity="0.35"/>
+        <path d="M45 56 L55 64 M55 56 L45 64" stroke={ashColor} strokeWidth="0.6" opacity="0.3"/>
+        {/* Legs */}
+        <rect x="35" y="85" width="13" height="27" rx="3" fill={bodyColor} opacity={dim ? 0.4 : 0.8}/>
+        <rect x="52" y="85" width="13" height="27" rx="3" fill={bodyColor} opacity={dim ? 0.4 : 0.8}/>
+        <ellipse cx="41" cy="112" rx="9" ry="4" fill={cloakColor} opacity={dim ? 0.3 : 0.7}/>
+        <ellipse cx="58" cy="112" rx="9" ry="4" fill={cloakColor} opacity={dim ? 0.3 : 0.7}/>
+        {crack1 && <path d="M46 22 L44 45 L48 68" stroke="#f59e0b" strokeWidth="0.9" fill="none" opacity="0.5"/>}
+        {crack2 && <path d="M54 18 L57 40 L53 62 L56 80" stroke="#9333ea" strokeWidth="0.8" fill="none" opacity="0.45"/>}
+        {dissolve && <>
+          <path d="M24 48 Q10 38 6 22" stroke="#6b21a8" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3,3"/>
+          <path d="M76 48 Q90 38 94 22" stroke="#6b21a8" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3,3"/>
+          <path d="M20 100 Q10 112 14 120" stroke="#4a0080" strokeWidth="1" fill="none" opacity="0.4" strokeDasharray="2,4"/>
+        </>}
+        {consumed && <ellipse cx="50" cy="62" rx="26" ry="56" fill="url(#void)" opacity="0.65"/>}
+      </g>
+    );
+  },
+};
+
+function CharacterPortrait({ origin, darkness, honor, vitality }) {
+  const d = darkness;
+  const shadowOpacity   = Math.min(0.7, Math.max(0, (d - 30) / 70));
+  const voidPulse       = d >= 75;
+  const corruptionAura  = d >= 55;
+  const flickering      = vitality <= 20;
+
+  const OriginShape = origin ? ORIGIN_SVGS[origin] : null;
+
+  const corruptLabel = d >= 90 ? "THE VOID CLAIMS YOU"
+    : d >= 75 ? "CORRUPTION: CRITICAL"
+    : d >= 55 ? "CORRUPTION: SEVERE"
+    : d >= 35 ? "CORRUPTION: RISING"
+    : d >= 15 ? "CORRUPTION: PRESENT"
+    : null;
+
+  const honorLabel = honor <= 10 ? "HONOR: SHATTERED"
+    : honor <= 25 ? "HONOR: BROKEN"
+    : null;
+
+  return (
+    <div style={{
+      padding:"12px 10px 8px",
+      borderBottom:"1px solid #0a0600",
+      position:"relative",
+      background: d >= 75 ? "radial-gradient(ellipse at 50% 40%, #0d001a 0%, #000 70%)" : "#000",
+    }}>
+      <style>{`
+        @keyframes voidPulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+        @keyframes portraitFlicker { 0%,100%{opacity:1} 94%{opacity:.9} 96%{opacity:.4} 98%{opacity:.8} }
+        @keyframes auraBreath { 0%,100%{r:38} 50%{r:44} }
+        @keyframes shadowDrift { 0%{transform:translate(0,0)} 50%{transform:translate(2px,3px)} 100%{transform:translate(0,0)} }
+      `}</style>
+
+      <svg
+        viewBox="0 0 100 120"
+        width="100%"
+        style={{
+          display:"block",
+          maxHeight:"140px",
+          filter: flickering ? "brightness(0.6)" : undefined,
+          animation: flickering ? "portraitFlicker 3s step-end infinite" : voidPulse ? "voidPulse 3s ease infinite" : undefined,
+        }}
+      >
+        <defs>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2.5" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="8" result="blur"/>
+          </filter>
+          <radialGradient id="void" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#2d0050" stopOpacity="0.9"/>
+            <stop offset="60%" stopColor="#0d0020" stopOpacity="0.7"/>
+            <stop offset="100%" stopColor="#000" stopOpacity="0"/>
+          </radialGradient>
+          <radialGradient id="aura" cx="50%" cy="45%" r="50%">
+            <stop offset="0%" stopColor="#4a0080" stopOpacity="0.5"/>
+            <stop offset="100%" stopColor="#000" stopOpacity="0"/>
+          </radialGradient>
+        </defs>
+
+        {/* Corruption aura behind figure */}
+        {corruptionAura && (
+          <ellipse cx="50" cy="55" rx="42" ry="58" fill="url(#aura)"
+            style={{ animation:"voidPulse 2.5s ease infinite" }}/>
+        )}
+
+        {/* Shadow layer behind */}
+        {shadowOpacity > 0 && (
+          <ellipse cx="52" cy="68" rx="20" ry="38" fill="#1a0028"
+            opacity={shadowOpacity}
+            style={{ animation:"shadowDrift 4s ease infinite" }}
+            filter="url(#shadow)"/>
+        )}
+
+        {/* The figure */}
+        {OriginShape
+          ? <OriginShape dark={d} honor={honor} vitality={vitality}/>
+          : <ellipse cx="50" cy="60" rx="20" ry="50" fill="#2d2316" opacity="0.5"/>
+        }
+
+        {/* Ground shadow */}
+        <ellipse cx="50" cy="116" rx="22" ry="4" fill="#000" opacity="0.6"/>
+      </svg>
+
+      {/* Origin name */}
+      <div style={{ textAlign:"center", fontSize:"8px", color:"#2d2316", letterSpacing:"2px", marginTop:"4px" }}>
+        {origin ? ORIGINS[origin].name.toUpperCase() : "UNKNOWN"}
+      </div>
+
+      {/* Corruption / honor status labels */}
+      {corruptLabel && (
+        <div style={{
+          textAlign:"center", fontSize:"7px",
+          color: d >= 90 ? "#9333ea" : d >= 75 ? "#7c3aed" : "#6d28d9",
+          letterSpacing:"1px", marginTop:"3px",
+          animation:"voidPulse 2s ease infinite",
+          fontFamily:"'Share Tech Mono',monospace"
+        }}>
+          {corruptLabel}
+        </div>
+      )}
+      {honorLabel && (
+        <div style={{
+          textAlign:"center", fontSize:"7px",
+          color:"#6b7280", letterSpacing:"1px", marginTop:"2px",
+          fontFamily:"'Share Tech Mono',monospace"
+        }}>
+          {honorLabel}
+        </div>
+      )}
+
+      {/* Darkness meter bar */}
+      <div style={{ marginTop:"8px", padding:"0 4px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", fontSize:"7px", color:"#2d1a40", letterSpacing:"1px", marginBottom:"3px" }}>
+          <span>☽ DARKNESS</span><span style={{ color: d >= 75 ? "#9333ea" : "#3d1a4a" }}>{d}</span>
+        </div>
+        <div style={{ height:"2px", background:"#0a0010", borderRadius:"1px" }}>
+          <div style={{
+            height:"100%", borderRadius:"1px",
+            width:`${d}%`,
+            background: d >= 75 ? "linear-gradient(90deg,#4a0080,#9333ea)" : d >= 40 ? "linear-gradient(90deg,#2d0050,#6b21a8)" : "linear-gradient(90deg,#1a0028,#4a1a6a)",
+            transition:"width .8s ease, background .8s ease",
+            boxShadow: d >= 55 ? "0 0 6px #9333ea80" : "none"
+          }}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── API KEY — OpenRouter ─────────────────────────────────────────────────────
+const OPENROUTER_STORAGE_KEY = "thornbound_openrouter_key";
+const getStoredApiKey = () => { try { return localStorage.getItem(OPENROUTER_STORAGE_KEY) || ""; } catch(e) { return ""; } };
+const storeApiKey = (k) => { try { localStorage.setItem(OPENROUTER_STORAGE_KEY, k); } catch(e) {} };
+
+// ─── SAVE / LOAD ──────────────────────────────────────────────────────────────
+
+const SAVE_KEY = "thornbound_save_v1";
+
+const buildSaveState = (state) => ({
+  version: 1,
+  savedAt: Date.now(),
+  screen: state.screen,
+  selectedOrigin: state.selectedOrigin,
+  turn: state.turn,
+  stats: state.stats,
+  inventory: state.inventory,
+  location: state.location,
+  mood: state.mood,
+  messages: state.messages,
+  choices: state.choices,
+  pivotFlags: state.pivotFlags,
+  choiceLog: state.choiceLog,
+  npcState: state.npcState,
+  typedText: state.typedText,
+  // Ending state
+  ending: state.ending,
+  finalStats: state.finalStats,
+  eulogy: state.eulogy,
+  endingPhase: state.endingPhase,
+});
+
+const persistSave = (stateObj) => {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(stateObj)); } catch (e) {}
+};
+
+const loadSave = () => {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (s?.version !== 1) return null;
+    return s;
+  } catch (e) { return null; }
+};
+
+const deleteSave = () => {
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+};
+
+// ─── COMPONENT ────────────────────────────────────────────────────────────────
+
+function Thornbound() {
+  const [screen, setScreen] = useState("intro"); // intro | origin | game | ending
+  const [selectedOrigin, setSelectedOrigin] = useState(null);
+  const [turn, setTurn] = useState(0);
+  const [stats, setStats] = useState({ vitality:80, strength:50, influence:40, wisdom:40, honor:60, darkness:0 });
+  const [inventory, setInventory] = useState([]);
+  const [location, setLocation] = useState("The Five Kingdoms");
+  const [mood, setMood] = useState("mysterious");
+  const [messages, setMessages] = useState([]);
+  const [narrative, setNarrative] = useState("");
+  const [choices, setChoices] = useState([]);
+  const [pivotFlags, setPivotFlags] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [typedText, setTypedText] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [showPanel, setShowPanel] = useState("stats");
+  const [choiceLog, setChoiceLog] = useState([]);
+  const [glitch, setGlitch] = useState(false);
+  const [ending, setEnding] = useState(null);
+  const [finalStats, setFinalStats] = useState(null);
+  const [eraTransition, setEraTransition] = useState(null);
+  const [npcState, setNpcState] = useState(DEFAULT_NPC_STATE);
+  const [eulogy, setEulogy] = useState("");
+  const [eulogyLoading, setEulogyLoading] = useState(false);
+  const [endingPhase, setEndingPhase] = useState(0); // 0=dark, 1=icon, 2=title, 3=desc, 4=eulogy, 5=stats, 6=chronicle, 7=full
+  const termRef = useRef(null);
+  const typingRef = useRef(null);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [saveIndicator, setSaveIndicator] = useState(""); // "" | "saving" | "saved"
+  const [existingSave, setExistingSave] = useState(null); // save metadata for intro screen
+  const [openRouterKey, setOpenRouterKey] = useState(() => getStoredApiKey());
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [keyDraft, setKeyDraft] = useState("");
+
+  // Check for existing save on mount
+  useEffect(() => {
+    const s = loadSave();
+    if (s && s.screen === "game" && s.turn > 0) setExistingSave(s);
+  }, []);
+
+  const currentEra = ERAS.find(e => turn >= e.turns[0] && turn <= e.turns[1]) || ERAS[3];
+  const progress = Math.min(100, Math.round((turn / 90) * 100));
+
+  useEffect(() => {
+    if (termRef.current) termRef.current.scrollTop = termRef.current.scrollHeight;
+  }, [typedText, choices, loading]);
+
+  const triggerGlitch = () => { setGlitch(true); setTimeout(() => setGlitch(false), 400); };
+
+  const typeText = useCallback((text) => {
+    setIsTyping(true);
+    setTypedText("");
+    let i = 0;
+    clearInterval(typingRef.current);
+    typingRef.current = setInterval(() => {
+      if (i < text.length) { setTypedText(text.slice(0, i + 1)); i++; }
+      else { clearInterval(typingRef.current); setIsTyping(false); }
+    }, 14);
+  }, []);
+
+  const parseResponse = (text) => {
+    const m = text.match(/```json\s*([\s\S]*?)```/);
+    let parsed = null, narr = text;
+    if (m) {
+      try { parsed = JSON.parse(m[1]); narr = text.replace(/```json[\s\S]*?```/, "").trim(); }
+      catch (e) {}
+    }
+    return { narr, parsed };
+  };
+
+  const applyStats = (changes, currentStats) => {
+    if (!changes) return currentStats;
+    return {
+      vitality:  Math.max(0, Math.min(100, currentStats.vitality  + (changes.vitality  || 0))),
+      strength:  Math.max(0, Math.min(100, currentStats.strength  + (changes.strength  || 0))),
+      influence: Math.max(0, Math.min(100, currentStats.influence + (changes.influence || 0))),
+      wisdom:    Math.max(0, Math.min(100, currentStats.wisdom    + (changes.wisdom    || 0))),
+      honor:     Math.max(0, Math.min(100, currentStats.honor     + (changes.honor     || 0))),
+      darkness:  Math.max(0, Math.min(100, currentStats.darkness  + (changes.darkness  || 0))),
+    };
+  };
+
+  const applyNpcUpdates = (updates, current) => {
+    if (!updates || !Array.isArray(updates) || updates.length === 0) return current;
+    const next = { ...current };
+    updates.forEach(u => {
+      if (!u.id || !next[u.id]) return;
+      next[u.id] = {
+        trust:    Math.max(0, Math.min(100, (next[u.id].trust || 50) + (u.trustDelta || 0))),
+        status:   u.status || next[u.id].status,
+        lastSeen: u.lastSeen || next[u.id].lastSeen,
+      };
+    });
+    return next;
+  };
+
+  const checkEraTransition = (newTurn) => {
+    const newEra = ERAS.find(e => newTurn >= e.turns[0] && newTurn <= e.turns[1]);
+    const oldEra = ERAS.find(e => (newTurn - 1) >= e.turns[0] && (newTurn - 1) <= e.turns[1]);
+    if (newEra && oldEra && newEra.id !== oldEra.id) {
+      setEraTransition(newEra);
+      setTimeout(() => setEraTransition(null), 3500);
+    }
+  };
+
+  const callOpenRouter = async (msgs, currentTurn, currentStats) => {
+    const era = ERAS.find(e => currentTurn >= e.turns[0] && currentTurn <= e.turns[1]) || ERAS[3];
+    const sysPrompt = buildSystemPrompt(currentTurn, era, pivotFlags, currentStats, selectedOrigin || "bastard_knight", npcState);
+
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openRouterKey}`,
+        "HTTP-Referer": window.location.href,
+        "X-Title": "Thornbound",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3.1-flash-lite",
+        max_tokens: 1200,
+        temperature: 0.9,
+        messages: [
+          { role: "system", content: sysPrompt },
+          ...msgs.map(m => ({ role: m.role, content: m.content })),
+        ],
+      }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || "OpenRouter error");
+    return data.choices?.[0]?.message?.content || "";
+  };
+
+  const chooseOrigin = async (originKey) => {
+    setSelectedOrigin(originKey);
+    const origin = ORIGINS[originKey];
+    setStats(origin.stats);
+    setInventory(origin.inventory);
+    setScreen("game");
+    setLoading(true);
+    triggerGlitch();
+
+    const introMsg = buildIntroPrompt(originKey);
+    const initMsgs = [{ role: "user", content: introMsg }];
+    try {
+      const raw = await callOpenRouter(initMsgs, 1, origin.stats);
+      const { narr, parsed } = parseResponse(raw);
+      setMessages([...initMsgs, { role: "assistant", content: raw }]);
+      if (parsed) {
+        setChoices(parsed.choices || []);
+        setLocation(parsed.location || "Thornbound Realm");
+        setMood(parsed.mood || "mysterious");
+      }
+      setTurn(1);
+      setLoading(false);
+      typeText(narr);
+    } catch (e) { setLoading(false); }
+  };
+
+  const makeChoice = async (choice) => {
+    if (isTyping || loading) return;
+    triggerGlitch();
+    const newTurn = turn + 1;
+    const userMsg = `My choice: ${choice}`;
+    const updatedMsgs = [...messages, { role: "user", content: userMsg }];
+    setMessages(updatedMsgs);
+    setLoading(true);
+    setChoices([]);
+    setChoiceLog(l => [...l, { turn, era: currentEra.id, text: choice }]);
+    checkEraTransition(newTurn);
+
+    try {
+      const raw = await callOpenRouter(updatedMsgs, newTurn, stats);
+      const { narr, parsed } = parseResponse(raw);
+      const finalMsgs = [...updatedMsgs, { role: "assistant", content: raw }];
+      setMessages(finalMsgs);
+
+      if (parsed) {
+        const newStats = applyStats(parsed.statChanges, stats);
+        setStats(newStats);
+        if (parsed.npcUpdates?.length) setNpcState(cur => applyNpcUpdates(parsed.npcUpdates, cur));
+        if (parsed.inventoryAdd?.length) setInventory(p => [...new Set([...p, ...parsed.inventoryAdd])]);
+        if (parsed.inventoryRemove?.length) setInventory(p => p.filter(i => !parsed.inventoryRemove.includes(i)));
+        if (parsed.location) setLocation(parsed.location);
+        if (parsed.mood) setMood(parsed.mood);
+        if (parsed.isPivot && parsed.pivotLabel) setPivotFlags(f => [...f, `T${turn}: ${parsed.pivotLabel}`]);
+
+        if (parsed.gameOver && parsed.endingKey) {
+          const endingObj = ENDINGS[parsed.endingKey] || ENDINGS.exile;
+          setEnding(endingObj);
+          setTurn(newTurn);
+          setLoading(false);
+          typeText(narr);
+          const delay = narr.length * 14 + 2500;
+          setTimeout(() => {
+            setScreen("ending");
+            deleteSave();
+            setExistingSave(null);
+            triggerEndingSequence(endingObj, newStats, parsed.isPivot && parsed.pivotLabel ? [...pivotFlags, `T${turn}: ${parsed.pivotLabel}`] : pivotFlags, selectedOrigin, newTurn);
+          }, delay);
+          return;
+        }
+        // Check vitality death
+        if (newStats.vitality <= 0) {
+          const endingObj = ENDINGS.martyr;
+          setEnding(endingObj);
+          setTurn(newTurn);
+          setLoading(false);
+          typeText(narr);
+          setTimeout(() => {
+            setScreen("ending");
+            deleteSave();
+            setExistingSave(null);
+            triggerEndingSequence(endingObj, newStats, pivotFlags, selectedOrigin, newTurn);
+          }, narr.length * 14 + 2500);
+          return;
+        }
+        setChoices(parsed.choices || []);
+      }
+      setTurn(newTurn);
+      setLoading(false);
+      typeText(narr);
+      // Auto-save after each turn — use computed values since state hasn't flushed yet
+      const newInv = parsed?.inventoryAdd?.length
+        ? [...new Set([...inventory, ...parsed.inventoryAdd])].filter(i => !parsed?.inventoryRemove?.includes(i))
+        : inventory.filter(i => !parsed?.inventoryRemove?.includes(i));
+      const newNpc = parsed?.npcUpdates?.length ? applyNpcUpdates(parsed.npcUpdates, npcState) : npcState;
+      const newPivots = parsed?.isPivot && parsed?.pivotLabel ? [...pivotFlags, `T${turn}: ${parsed.pivotLabel}`] : pivotFlags;
+      const newLog = [...choiceLog, { turn, era: currentEra.id, text: choice }];
+      persistSave(buildSaveState({
+        screen: "game", selectedOrigin, turn: newTurn,
+        stats: parsed ? applyStats(parsed.statChanges, stats) : stats,
+        inventory: newInv, location: parsed?.location || location,
+        mood: parsed?.mood || mood, messages: finalMsgs,
+        choices: parsed?.choices || [], pivotFlags: newPivots,
+        choiceLog: newLog, npcState: newNpc,
+        typedText: narr, ending: null, finalStats: null, eulogy: "", endingPhase: 0,
+      }));
+      setSaveIndicator("saved");
+      setTimeout(() => setSaveIndicator(""), 2000);
+    } catch (e) { setLoading(false); }
+  };
+
+  const generateEulogy = async (endingObj, finalStats, finalPivots, finalOrigin, finalTurn) => {
+    setEulogyLoading(true);
+    const originName = finalOrigin ? ORIGINS[finalOrigin]?.name : "Unknown";
+    const pivotSummary = finalPivots.length > 0 ? finalPivots.join("; ") : "no pivotal choices recorded";
+    const prompt = `You are writing the closing epitaph for a dark fantasy RPG character who has just reached their end.
+
+Character: ${originName}
+Ending: ${endingObj.title}
+Final stats — Vitality: ${finalStats.vitality}, Strength: ${finalStats.strength}, Influence: ${finalStats.influence}, Wisdom: ${finalStats.wisdom}, Honor: ${finalStats.honor}, Darkness: ${finalStats.darkness}
+Turns survived: ${finalTurn}
+Pivotal choices made: ${pivotSummary}
+
+Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, literary, precise. The first sentence names what they were. The second names what they did or what it cost. The third is their legacy — what remains after them, for good or ill. No fluff. No comfort. Just truth.`;
+
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openRouterKey}`,
+          "HTTP-Referer": window.location.href,
+          "X-Title": "Thornbound",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.1-flash-lite",
+          max_tokens: 400,
+          temperature: 0.85,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content || "";
+      setEulogy(text.trim());
+    } catch (e) {
+      setEulogy("You came. You chose. The realm remembers.");
+    }
+    setEulogyLoading(false);
+  };
+
+  const triggerEndingSequence = (endingObj, finalStatsArg, finalPivots, finalOrigin, finalTurn) => {
+    setEndingPhase(0);
+    setEulogy("");
+    setFinalStats(finalStatsArg);
+    setTimeout(() => setEndingPhase(1), 600);
+    setTimeout(() => setEndingPhase(2), 1400);
+    setTimeout(() => setEndingPhase(3), 2200);
+    setTimeout(() => setEndingPhase(4), 3000);
+    setTimeout(() => setEndingPhase(5), 3600);
+    setTimeout(() => setEndingPhase(6), 4200);
+    setTimeout(() => setEndingPhase(7), 4800);
+    generateEulogy(endingObj, finalStatsArg, finalPivots, finalOrigin, finalTurn);
+  };
+
+  const resetGame = () => {
+    setScreen("intro");
+    setSelectedOrigin(null);
+    setTurn(0);
+    setStats({ vitality:80, strength:50, influence:40, wisdom:40, honor:60, darkness:0 });
+    setInventory([]);
+    setMessages([]);
+    setChoices([]);
+    setPivotFlags([]);
+    setChoiceLog([]);
+    setEnding(null);
+    setFinalStats(null);
+    setEulogy("");
+    setEndingPhase(0);
+    setNpcState(DEFAULT_NPC_STATE);
+    setTypedText("");
+    setLocation("The Five Kingdoms");
+    setMood("mysterious");
+    setMusicPlaying(false);
+  };
+
+  const saveGame = (overrides = {}) => {
+    const stateObj = buildSaveState({
+      screen, selectedOrigin, turn, stats, inventory, location, mood,
+      messages, choices, pivotFlags, choiceLog, npcState, typedText,
+      ending, finalStats, eulogy, endingPhase,
+      ...overrides,
+    });
+    persistSave(stateObj);
+    setSaveIndicator("saved");
+    setTimeout(() => setSaveIndicator(""), 2000);
+  };
+
+  const loadGameFromSave = (s) => {
+    if (!s) return;
+    setScreen(s.screen || "game");
+    setSelectedOrigin(s.selectedOrigin || null);
+    setTurn(s.turn || 0);
+    setStats(s.stats || { vitality:80, strength:50, influence:40, wisdom:40, honor:60, darkness:0 });
+    setInventory(s.inventory || []);
+    setLocation(s.location || "The Five Kingdoms");
+    setMood(s.mood || "mysterious");
+    setMessages(s.messages || []);
+    setChoices(s.choices || []);
+    setPivotFlags(s.pivotFlags || []);
+    setChoiceLog(s.choiceLog || []);
+    setNpcState(s.npcState || DEFAULT_NPC_STATE);
+    setTypedText(s.typedText || "");
+    setEnding(s.ending || null);
+    setFinalStats(s.finalStats || null);
+    setEulogy(s.eulogy || "");
+    setEndingPhase(s.endingPhase || 0);
+    setExistingSave(null);
+  };
+
+
+
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=IM+Fell+English:ital@0;1&family=Share+Tech+Mono&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#000;overflow:hidden;}
+
+    @keyframes flicker{0%,100%{opacity:1}93%{opacity:.98}95%{opacity:.75}97%{opacity:.96}}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+    @keyframes glitch{0%,100%{transform:translate(0)}20%{transform:translate(-3px,1px)}40%{transform:translate(3px,-1px)}60%{transform:translate(-2px,2px)}80%{transform:translate(2px,-2px)}}
+    @keyframes scan{0%{top:-15%}100%{top:115%}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes eraReveal{0%{opacity:0;transform:scale(.93) translateY(24px)}60%{opacity:1;transform:scale(1.03) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+    @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+    @keyframes thorns{0%{stroke-dashoffset:200}100%{stroke-dashoffset:0}}
+    @keyframes bloodDrip{0%{transform:scaleY(0);transform-origin:top}100%{transform:scaleY(1);transform-origin:top}}
+    @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+    @keyframes originHover{0%,100%{box-shadow:0 0 0 rgba(0,0,0,0)}50%{box-shadow:0 0 20px rgba(180,120,60,.2)}}
+
+    .crt::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px);pointer-events:none;z-index:9999;}
+    .scanline{position:fixed;left:0;right:0;height:100px;background:linear-gradient(transparent,rgba(180,120,40,.03),transparent);animation:scan 12s linear infinite;pointer-events:none;z-index:9998;}
+    .glitch-active{animation:glitch .4s ease;}
+    .fade-up{animation:fadeUp .35s ease;}
+    .era-reveal{animation:eraReveal .7s cubic-bezier(.34,1.56,.64,1);}
+
+    ::-webkit-scrollbar{width:3px;}
+    ::-webkit-scrollbar-track{background:#000;}
+    ::-webkit-scrollbar-thumb{background:#2a1a08;border-radius:2px;}
+
+    .choice-btn{
+      background:#060400;
+      border:1px solid #1c1208;
+      color:#8a7560;
+      padding:13px 16px;
+      width:100%;
+      text-align:left;
+      font-family:'Share Tech Mono',monospace;
+      font-size:12px;
+      line-height:1.7;
+      border-radius:2px;
+      cursor:pointer;
+      transition:all .15s ease;
+      margin-bottom:8px;
+      letter-spacing:.3px;
+    }
+    .choice-btn:hover:not(:disabled){
+      background:#100900;
+      border-color:#8b5c1a;
+      color:#d4a96a;
+      box-shadow:0 0 16px rgba(139,92,26,.25);
+      padding-left:22px;
+    }
+    .choice-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+    .panel-tab{
+      background:none;border:none;border-bottom:2px solid transparent;
+      color:#3d2e1a;font-family:'Share Tech Mono',monospace;
+      font-size:8px;letter-spacing:1px;padding:8px 8px;cursor:pointer;transition:all .15s;
+      flex:1;
+    }
+    .panel-tab.active{color:#b8893a;border-bottom-color:#8b5c1a;}
+    .panel-tab:hover:not(.active){color:#8b5c1a;}
+
+    .origin-card{
+      background:#05030a;border:1px solid #1a1005;
+      border-radius:3px;padding:20px;cursor:pointer;
+      transition:all .2s ease;text-align:left;width:100%;
+    }
+    .origin-card:hover{
+      background:#0d0800;border-color:#8b5c1a;
+      box-shadow:0 0 24px rgba(139,92,26,.2);
+      transform:translateY(-2px);
+    }
+    .origin-card.selected{border-color:#c47a2a;box-shadow:0 0 30px rgba(196,122,42,.3);}
+
+    .intro-btn{
+      background:#060300;border:1px solid #8b5c1a;color:#c4892a;
+      padding:14px 44px;font-family:'Cinzel',serif;font-weight:700;
+      font-size:13px;letter-spacing:4px;cursor:pointer;border-radius:2px;
+      transition:all .2s;box-shadow:0 0 20px rgba(139,92,26,.2);
+    }
+    .intro-btn:hover{background:#100800;box-shadow:0 0 40px rgba(196,122,42,.4),0 0 80px rgba(139,92,26,.1);transform:scale(1.02);}
+    .intro-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+    .stat-bar-track{height:3px;background:#0a0600;border-radius:2px;}
+    .stat-bar-fill{height:100%;border-radius:2px;transition:width .6s ease;}
+
+    .thorn-divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,#2a1a08 30%,#2a1a08 70%,transparent);}
+  `;
+
+  // ─── INTRO SCREEN ──────────────────────────────────────────────────────────
+
+  if (screen === "intro") return (
+    <div className="crt" style={{ minHeight:"100vh", background:"#010000", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Share Tech Mono',monospace", padding:"24px", animation:"flicker 15s infinite" }}>
+      <style>{css}</style>
+      <div className="scanline"/>
+      <div style={{ maxWidth:"640px", width:"100%", textAlign:"center" }}>
+
+        <div style={{ fontSize:"9px", color:"#1a1005", letterSpacing:"6px", marginBottom:"32px" }}>THE THORNBOUND CHRONICLES — RESTRICTED ARCHIVE</div>
+
+        <div style={{ fontFamily:"'Cinzel Decorative',serif", fontWeight:900, fontSize:"clamp(30px,7vw,68px)", color:"#c4892a", lineHeight:1.05, marginBottom:"8px", textShadow:"0 0 40px rgba(196,122,42,.5),0 0 80px rgba(139,92,26,.2)" }}>
+          THORN<br/>BOUND
+        </div>
+        <div style={{ color:"#3d2e1a", fontSize:"10px", letterSpacing:"7px", marginBottom:"52px", fontFamily:"'Share Tech Mono',monospace" }}>A DARK FANTASY CHRONICLE</div>
+
+        <div style={{ border:"1px solid #1a1005", borderRadius:"4px", padding:"28px", marginBottom:"32px", background:"#03010a", textAlign:"left" }}>
+          <div style={{ color:"#6b4c1e", fontSize:"9px", letterSpacing:"3px", marginBottom:"16px" }}>▸ THE THORNBOUND PACT</div>
+          <div style={{ color:"#5a4a34", fontSize:"12px", lineHeight:2.1, fontFamily:"'IM Fell English',serif" }}>
+            Five kingdoms. One fragile peace.<br/>
+            The Thornbound Pact holds — for now.<br/>
+            Kings are moving pieces. Spymasters are counting knives.<br/>
+            <br/>
+            <span style={{ color:"#b8893a" }}>The realm does not care who you are. Only what you choose.</span>
+          </div>
+          <div style={{ marginTop:"24px", display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"12px" }}>
+            {[["∞","No Turn Limit"],["6","Endings"],["4","Origins"]].map(([n, l]) => (
+              <div key={l} style={{ textAlign:"center", padding:"14px", border:"1px solid #1a1005", borderRadius:"3px" }}>
+                <div style={{ color:"#c4892a", fontSize:"22px", fontFamily:"'Cinzel',serif", fontWeight:700 }}>{n}</div>
+                <div style={{ color:"#3d2e1a", fontSize:"9px", letterSpacing:"2px", marginTop:"4px" }}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"10px", marginBottom:"44px", fontSize:"10px" }}>
+          {[
+            ["⚔", "Honor & Darkness", "Let honor collapse and you become something else entirely. Let darkness rise and it rewrites you."],
+            ["◈", "Four Eras", "Gathering Storm → Great Betrayal → War of Five Thorns → The Reckoning"],
+            ["♛", "Six Fates", "King. Shadow. Exile. Martyr. Warlord. Deceiver. The realm decides nothing — you do."],
+          ].map(([icon, title, desc]) => (
+            <div key={title} style={{ padding:"16px", border:"1px solid #0f0a04", borderRadius:"3px", background:"#02010a" }}>
+              <div style={{ fontSize:"18px", marginBottom:"8px" }}>{icon}</div>
+              <div style={{ color:"#8b5c1a", fontFamily:"'Cinzel',serif", marginBottom:"6px", fontSize:"11px" }}>{title}</div>
+              <div style={{ color:"#2d2316", lineHeight:1.7 }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+
+        <button className="intro-btn" disabled={!openRouterKey} onClick={() => setScreen("origin")}>CHOOSE YOUR BLOOD</button>
+
+        {existingSave && (
+          <div style={{ marginTop:"24px", border:"1px solid #2a1a08", borderRadius:"3px", padding:"18px", background:"#03010a", textAlign:"left" }}>
+            <div style={{ fontSize:"8px", color:"#3d2e1a", letterSpacing:"3px", marginBottom:"12px" }}>⸻ CHRONICLE IN PROGRESS ⸻</div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"12px" }}>
+              <div>
+                <div style={{ color:"#b8893a", fontSize:"12px", fontFamily:"'Cinzel',serif", marginBottom:"4px" }}>
+                  {ORIGINS[existingSave.selectedOrigin]?.name || "Unknown"} · Turn {existingSave.turn}
+                </div>
+                <div style={{ color:"#3d2e1a", fontSize:"9px", letterSpacing:"1px" }}>
+                  {ERAS.find(e => existingSave.turn >= e.turns[0] && existingSave.turn <= e.turns[1])?.name || "Unknown Era"}
+                  {" · "}{existingSave.location}
+                </div>
+                <div style={{ marginTop:"8px", display:"flex", gap:"12px" }}>
+                  {Object.entries(STAT_META).slice(0,4).map(([k,v]) => (
+                    <span key={k} style={{ fontSize:"9px", color:v.color }}>
+                      {v.icon} {existingSave.stats?.[k] ?? "—"}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:"8px", flexShrink:0 }}>
+                <button className="intro-btn" style={{ padding:"10px 20px", fontSize:"11px" }}
+                  disabled={!openRouterKey}
+                  onClick={() => loadGameFromSave(existingSave)}>
+                  CONTINUE
+                </button>
+                <button onClick={() => { deleteSave(); setExistingSave(null); }}
+                  style={{ background:"none", border:"1px solid #1a1005", borderRadius:"2px", color:"#2d2316", fontSize:"8px", cursor:"pointer", padding:"6px 12px", letterSpacing:"1px", fontFamily:"'Share Tech Mono',monospace" }}>
+                  ABANDON RUN
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop:"16px", color:"#1a1005", fontSize:"9px", letterSpacing:"3px" }}>THE REALM REMEMBERS WHAT YOU DO</div>
+
+        {/* API Key section */}
+        <div style={{ marginTop:"28px", borderTop:"1px solid #0f0700", paddingTop:"20px" }}>
+          {!openRouterKey ? (
+            <div style={{ background:"#03010a", border:"1px solid #1a1005", borderRadius:"3px", padding:"18px", textAlign:"left" }}>
+              <div style={{ color:"#6b4c1e", fontSize:"9px", letterSpacing:"3px", marginBottom:"12px" }}>▸ OPENROUTER API KEY REQUIRED</div>
+              <div style={{ color:"#3d2e1a", fontSize:"10px", lineHeight:1.8, marginBottom:"14px", fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>
+                Paste your OpenRouter key to begin. It is stored locally in your browser only.
+              </div>
+              <div style={{ display:"flex", gap:"8px" }}>
+                <input
+                  type="password"
+                  placeholder="sk-or-..."
+                  value={keyDraft}
+                  onChange={e => setKeyDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && keyDraft.trim()) { storeApiKey(keyDraft.trim()); setOpenRouterKey(keyDraft.trim()); setKeyDraft(""); }}}
+                  style={{ flex:1, background:"#000", border:"1px solid #2a1a08", borderRadius:"2px", color:"#8a7560", fontSize:"11px", padding:"8px 12px", fontFamily:"'Share Tech Mono',monospace", outline:"none" }}
+                />
+                <button
+                  onClick={() => { if (keyDraft.trim()) { storeApiKey(keyDraft.trim()); setOpenRouterKey(keyDraft.trim()); setKeyDraft(""); }}}
+                  style={{ background:"#060300", border:"1px solid #8b5c1a", color:"#c4892a", fontSize:"9px", padding:"8px 14px", cursor:"pointer", borderRadius:"2px", letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace" }}
+                >
+                  SAVE
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"12px" }}>
+              <div style={{ color:"#3d6b2a", fontSize:"9px", letterSpacing:"2px" }}>✓ API KEY ACTIVE</div>
+              <button
+                onClick={() => { storeApiKey(""); setOpenRouterKey(""); }}
+                style={{ background:"none", border:"1px solid #1a1005", borderRadius:"2px", color:"#2d2316", fontSize:"8px", cursor:"pointer", padding:"4px 10px", letterSpacing:"1px", fontFamily:"'Share Tech Mono',monospace" }}
+              >
+                CHANGE KEY
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─── ORIGIN SCREEN ─────────────────────────────────────────────────────────
+
+  if (screen === "origin") return (
+    <div className="crt" style={{ minHeight:"100vh", background:"#010000", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Share Tech Mono',monospace", padding:"24px" }}>
+      <style>{css}</style>
+      <div className="scanline"/>
+      <div style={{ maxWidth:"680px", width:"100%", textAlign:"center" }}>
+
+        <div style={{ fontFamily:"'Cinzel',serif", fontWeight:700, fontSize:"11px", color:"#6b4c1e", letterSpacing:"5px", marginBottom:"8px" }}>BEFORE YOU BEGIN</div>
+        <div style={{ fontFamily:"'Cinzel Decorative',serif", fontWeight:900, fontSize:"28px", color:"#c4892a", marginBottom:"8px", textShadow:"0 0 20px rgba(196,122,42,.4)" }}>CHOOSE YOUR BLOOD</div>
+        <div style={{ color:"#3d2e1a", fontSize:"11px", marginBottom:"40px", fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>
+          Your origin shapes your starting strengths — and your enemies.
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"14px", marginBottom:"36px" }}>
+          {Object.entries(ORIGINS).map(([key, o]) => (
+            <button key={key} className={`origin-card ${selectedOrigin === key ? "selected" : ""}`} onClick={() => setSelectedOrigin(key)}>
+              <div style={{ fontSize:"24px", marginBottom:"12px" }}>{o.icon}</div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontWeight:700, color:"#c4892a", fontSize:"14px", marginBottom:"8px", letterSpacing:"1px" }}>{o.name}</div>
+              <div style={{ color:"#5a4a34", fontSize:"11px", lineHeight:1.8, marginBottom:"16px", fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>{o.desc}</div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"6px" }}>
+                {[["VIT", o.stats.vitality], ["STR", o.stats.strength], ["INF", o.stats.influence], ["WIS", o.stats.wisdom], ["HON", o.stats.honor], ["DRK", o.stats.darkness]].map(([label, val]) => (
+                  <div key={label} style={{ textAlign:"center" }}>
+                    <div style={{ color: label === "DRK" ? "#9333ea" : "#8b5c1a", fontSize:"9px", letterSpacing:"1px", marginBottom:"3px" }}>{label}</div>
+                    <div className="stat-bar-track">
+                      <div className="stat-bar-fill" style={{ width:`${val}%`, background: label==="DRK" ? "#9333ea" : label==="VIT" ? "#4ade80" : label==="STR" ? "#f87171" : label==="INF" ? "#f59e0b" : label==="HON" ? "#a78bfa" : "#60a5fa" }}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {selectedOrigin && (
+          <div style={{ border:"1px solid #1a1005", borderRadius:"3px", padding:"16px", marginBottom:"24px", background:"#030108", textAlign:"left", animation:"fadeUp .3s ease" }}>
+            <div style={{ color:"#6b4c1e", fontSize:"9px", letterSpacing:"2px", marginBottom:"10px" }}>STARTING INVENTORY</div>
+            {ORIGINS[selectedOrigin].inventory.map((item, i) => (
+              <div key={i} style={{ color:"#5a4a34", fontSize:"11px", marginBottom:"4px" }}>
+                <span style={{ color:"#8b5c1a" }}>◆ </span>{item}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button className="intro-btn" disabled={!selectedOrigin} onClick={() => chooseOrigin(selectedOrigin)}>
+          ENTER THE REALM
+        </button>
+        <div style={{ marginTop:"12px" }}>
+          <button onClick={() => setScreen("intro")} style={{ background:"none", border:"none", color:"#2a1a08", fontSize:"10px", cursor:"pointer", letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace" }}>
+            ← BACK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─── ENDING SCREEN ─────────────────────────────────────────────────────────
+
+  if (screen === "ending" && ending) {
+    const displayStats = finalStats || stats;
+    const eraNames = { 1:"Gathering Storm", 2:"Great Betrayal", 3:"War of Five Thorns", 4:"The Reckoning" };
+    const statEpitaph = (k, v) => {
+      if (k === "vitality"  && v <= 0)  return "Spent entirely.";
+      if (k === "vitality"  && v <= 20) return "Barely held.";
+      if (k === "honor"     && v <= 10) return "Utterly abandoned.";
+      if (k === "honor"     && v >= 80) return "Unbroken to the last.";
+      if (k === "darkness"  && v >= 80) return "You became it.";
+      if (k === "darkness"  && v <= 10) return "Never touched.";
+      if (k === "influence" && v >= 80) return "Kingdoms bent to you.";
+      if (k === "wisdom"    && v >= 80) return "You saw it coming.";
+      if (k === "strength"  && v >= 80) return "Feared by all.";
+      return null;
+    };
+
+    const phaseVisible = (n) => endingPhase >= n;
+
+    return (
+      <div className="crt" style={{ minHeight:"100vh", background:"#000", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Share Tech Mono',monospace", position:"relative", overflow:"hidden" }}>
+        <style>{css}</style>
+        <style>{`
+          @keyframes bloodSweep { 0%{opacity:0;transform:scaleX(0)} 100%{opacity:1;transform:scaleX(1)} }
+          @keyframes iconPulse  { 0%{opacity:0;transform:scale(.4) translateY(20px);filter:blur(12px)} 60%{opacity:1;transform:scale(1.12) translateY(-4px);filter:blur(0)} 100%{opacity:1;transform:scale(1) translateY(0);filter:blur(0)} }
+          @keyframes fadeSlide  { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+          @keyframes titleBleed { 0%{opacity:0;letter-spacing:24px} 100%{opacity:1;letter-spacing:normal} }
+          @keyframes chronicleLine { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
+          @keyframes candleFlicker { 0%,100%{opacity:.8} 50%{opacity:.5} 70%{opacity:.9} }
+          @keyframes veilLift { from{opacity:1} to{opacity:0;pointer-events:none} }
+          @keyframes embersFloat { 0%{transform:translateY(0) translateX(0);opacity:.6} 100%{transform:translateY(-120px) translateX(20px);opacity:0} }
+          .chronicle-line { animation: chronicleLine .5s ease forwards; opacity: 0; }
+          .candle { animation: candleFlicker 2.8s ease infinite; }
+        `}</style>
+        <div className="scanline"/>
+
+        {/* Floating embers */}
+        {phaseVisible(2) && [0,1,2,3,4].map(i => (
+          <div key={i} style={{
+            position:"fixed", bottom:`${10+i*8}%`, left:`${15+i*18}%`,
+            width:"3px", height:"3px", borderRadius:"50%",
+            background: ending.color, opacity:.4,
+            animation:`embersFloat ${3+i}s ease-in infinite`,
+            animationDelay:`${i*0.7}s`
+          }}/>
+        ))}
+
+        {/* Dark veil that lifts */}
+        {endingPhase === 0 && (
+          <div style={{ position:"fixed", inset:0, background:"#000", zIndex:100 }}/>
+        )}
+
+        <div style={{ maxWidth:"640px", width:"100%", padding:"40px 28px", textAlign:"center", position:"relative" }}>
+
+          {/* Ending category label */}
+          {phaseVisible(1) && (
+            <div style={{ fontSize:"9px", color:"#2d2316", letterSpacing:"5px", marginBottom:"40px", animation:"fadeSlide .6s ease" }}>
+              CHRONICLE COMPLETE · TURN {turn} · {ORIGINS[selectedOrigin]?.name?.toUpperCase() || "UNKNOWN"}
+            </div>
+          )}
+
+          {/* Giant icon with glow */}
+          {phaseVisible(1) && (
+            <div style={{
+              fontSize:"88px", marginBottom:"28px",
+              filter:`drop-shadow(0 0 40px ${ending.color}) drop-shadow(0 0 80px ${ending.color}60)`,
+              animation:"iconPulse .8s cubic-bezier(.34,1.56,.64,1)"
+            }}>
+              {ending.icon}
+            </div>
+          )}
+
+          {/* Title */}
+          {phaseVisible(2) && (
+            <div style={{
+              fontFamily:"'Cinzel',serif", fontWeight:700,
+              fontSize:"clamp(22px,5vw,40px)", color:ending.color,
+              textShadow:`0 0 30px ${ending.color}80`,
+              animation:"titleBleed .9s ease",
+              marginBottom:"6px"
+            }}>
+              {ending.title}
+            </div>
+          )}
+
+          {/* Decorative rule */}
+          {phaseVisible(2) && (
+            <div style={{ display:"flex", alignItems:"center", gap:"12px", margin:"20px auto", maxWidth:"300px", animation:"fadeSlide .5s ease" }}>
+              <div style={{ flex:1, height:"1px", background:`linear-gradient(90deg, transparent, ${ending.color}60)` }}/>
+              <div style={{ color:ending.color, fontSize:"12px", opacity:.6 }}>✦</div>
+              <div style={{ flex:1, height:"1px", background:`linear-gradient(90deg, ${ending.color}60, transparent)` }}/>
+            </div>
+          )}
+
+          {/* Ending description */}
+          {phaseVisible(3) && (
+            <div style={{
+              color:"#8a7560", fontSize:"13px", lineHeight:2.2,
+              marginBottom:"32px", fontStyle:"italic",
+              fontFamily:"'IM Fell English',serif",
+              animation:"fadeSlide .6s ease"
+            }}>
+              {ending.desc}
+            </div>
+          )}
+
+          {/* AI Eulogy */}
+          {phaseVisible(4) && (
+            <div style={{
+              border:`1px solid ${ending.color}25`,
+              borderRadius:"4px", padding:"24px",
+              marginBottom:"28px", background:"#030108",
+              textAlign:"left", animation:"fadeSlide .6s ease",
+              position:"relative"
+            }}>
+              <div style={{ fontSize:"9px", color:"#3d2e1a", letterSpacing:"4px", marginBottom:"16px" }}>⸻ EPITAPH ⸻</div>
+              {eulogyLoading ? (
+                <div style={{ color:"#2d2316", fontSize:"12px", fontStyle:"italic", fontFamily:"'IM Fell English',serif" }}>
+                  The scribes are writing your end
+                  <span style={{ animation:"blink 1s step-end infinite", color:"#8b5c1a", marginLeft:"4px" }}>█</span>
+                </div>
+              ) : (
+                <div style={{ color:"#9a8570", fontSize:"13px", lineHeight:2.1, fontStyle:"italic", fontFamily:"'IM Fell English',serif" }}>
+                  {eulogy || ending.desc}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Final stats with epitaphs */}
+          {phaseVisible(5) && (
+            <div style={{
+              border:`1px solid ${ending.color}15`,
+              borderRadius:"4px", padding:"20px",
+              marginBottom:"24px", background:"#020106",
+              textAlign:"left", animation:"fadeSlide .6s ease"
+            }}>
+              <div style={{ fontSize:"9px", color:"#3d2e1a", letterSpacing:"4px", marginBottom:"18px" }}>⸻ FINAL RECKONING ⸻</div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:"12px" }}>
+                {Object.entries(STAT_META).map(([k, v]) => {
+                  const epitaph = statEpitaph(k, displayStats[k]);
+                  return (
+                    <div key={k} style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+                      <div style={{ minWidth:"36px" }}>
+                        <div style={{ color:v.color, fontSize:"17px", fontFamily:"'Cinzel',serif", fontWeight:700 }}>{displayStats[k]}</div>
+                      </div>
+                      <div>
+                        <div style={{ color:"#2d2316", fontSize:"8px", letterSpacing:"2px" }}>{v.icon} {v.label}</div>
+                        {epitaph && <div style={{ color:v.color, fontSize:"9px", opacity:.7, marginTop:"2px", fontStyle:"italic" }}>{epitaph}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Pivotal choices as chronicle */}
+          {phaseVisible(6) && pivotFlags.length > 0 && (
+            <div style={{
+              border:"1px solid #1a1005", borderRadius:"4px",
+              padding:"20px", marginBottom:"24px",
+              background:"#020104", textAlign:"left",
+              animation:"fadeSlide .6s ease"
+            }}>
+              <div style={{ fontSize:"9px", color:"#3d2e1a", letterSpacing:"4px", marginBottom:"18px" }}>⸻ THE CHOICES THAT MADE YOU ⸻</div>
+              <div style={{ position:"relative", paddingLeft:"20px" }}>
+                <div style={{ position:"absolute", left:"7px", top:0, bottom:0, width:"1px", background:"linear-gradient(to bottom, #3d1f08, transparent)" }}/>
+                {pivotFlags.map((f, i) => {
+                  const eraMatch = f.match(/T(\d+)/);
+                  const t = eraMatch ? parseInt(eraMatch[1]) : 0;
+                  const era = ERAS.find(e => t >= e.turns[0] && t <= e.turns[1]);
+                  return (
+                    <div key={i} className="chronicle-line" style={{ marginBottom:"14px", animationDelay:`${i * 0.12}s` }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"3px" }}>
+                        <div style={{ width:"8px", height:"8px", borderRadius:"50%", background: era?.color || "#8b5c1a", boxShadow:`0 0 6px ${era?.color || "#8b5c1a"}`, flexShrink:0, marginLeft:"-24px", marginRight:"8px" }}/>
+                        <div style={{ fontSize:"8px", color: era?.color || "#4a2a08", letterSpacing:"1px" }}>
+                          {eraNames[era?.id] || "UNKNOWN ERA"}
+                        </div>
+                      </div>
+                      <div style={{ color:"#5a4a34", fontSize:"11px", lineHeight:1.7, fontFamily:"'IM Fell English',serif", fontStyle:"italic", marginLeft:"0" }}>
+                        {f.replace(/^T\d+:\s*/, "")}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* CTA */}
+          {phaseVisible(7) && (
+            <div style={{ animation:"fadeSlide .6s ease" }}>
+              <div style={{ fontSize:"9px", color:"#2d2316", letterSpacing:"2px", marginBottom:"20px" }}>
+                the realm does not mourn. it moves on.
+              </div>
+              <button className="intro-btn" onClick={resetGame}>BEGIN ANOTHER CHRONICLE</button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── GAME SCREEN ──────────────────────────────────────────────────────────
+
+  const moodColor = MOOD_COLORS[mood] || "#a78bfa";
+
+  return (
+    <div className="crt" style={{ height:"100vh", background:"#000", display:"flex", flexDirection:"column", fontFamily:"'Share Tech Mono',monospace", overflow:"hidden" }}>
+      <style>{css}</style>
+      <div className="scanline"/>
+
+      {/* Era transition overlay */}
+      {eraTransition && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, backdropFilter:"blur(4px)" }}>
+          <div className="era-reveal" style={{ textAlign:"center" }}>
+            <div style={{ color:eraTransition.color, fontSize:"10px", letterSpacing:"6px", marginBottom:"14px", fontFamily:"'Share Tech Mono',monospace" }}>ERA {eraTransition.id} OF 4</div>
+            <div style={{ fontFamily:"'Cinzel',serif", fontWeight:700, fontSize:"38px", color:eraTransition.color, textShadow:`0 0 30px ${eraTransition.color}` }}>{eraTransition.name}</div>
+            <div style={{ color:"#6b7280", fontSize:"13px", marginTop:"10px", fontStyle:"italic", fontFamily:"'IM Fell English',serif" }}>{eraTransition.subtitle}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ borderBottom:"1px solid #0f0700", padding:"9px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", background:"#010000", flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
+          <div style={{ fontFamily:"'Cinzel',serif", color:"#c4892a", fontWeight:700, fontSize:"14px", letterSpacing:"2px" }}>⚔ THORNBOUND</div>
+          <div style={{ fontSize:"9px", color:currentEra.color, border:`1px solid ${currentEra.color}30`, padding:"2px 9px", borderRadius:"2px", letterSpacing:"1px" }}>
+            ERA {currentEra.id} · {currentEra.name.toUpperCase()}
+          </div>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+          <div style={{ fontSize:"9px", color:"#5a4a34", fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>
+            {selectedOrigin ? ORIGINS[selectedOrigin].name : ""}
+          </div>
+          <div style={{ fontSize:"9px", color:moodColor, border:`1px solid ${moodColor}20`, padding:"2px 8px", borderRadius:"2px", letterSpacing:"1px" }}>● {mood.toUpperCase()}</div>
+          <div style={{ fontSize:"9px", color:"#2d2316" }}>T{turn}</div>
+          {saveIndicator === "saved" && (
+            <div style={{ fontSize:"8px", color:"#3d5a1a", letterSpacing:"1px", animation:"fadeUp .3s ease" }}>◈ SAVED</div>
+          )}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ height:"2px", background:"#080400", flexShrink:0 }}>
+        <div style={{ height:"100%", width:`${progress}%`, background:`linear-gradient(90deg,#4a1c00,${currentEra.color})`, transition:"width .8s ease", boxShadow:`0 0 8px ${currentEra.color}60` }}/>
+      </div>
+
+      <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
+
+        {/* Left panel */}
+        <div style={{ width:"210px", minWidth:"210px", borderRight:"1px solid #0a0600", display:"flex", flexDirection:"column", background:"#010000", flexShrink:0 }}>
+
+          {/* Character Portrait */}
+          <CharacterPortrait
+            origin={selectedOrigin}
+            darkness={stats.darkness}
+            honor={stats.honor}
+            vitality={stats.vitality}
+          />
+
+          <div style={{ display:"flex", borderBottom:"1px solid #0f0700" }}>
+            {["stats","npc","inventory","log","map"].map(t => (
+              <button key={t} className={`panel-tab ${showPanel===t?"active":""}`} onClick={() => setShowPanel(t)}>
+                {t === "npc" ? "NPC" : t === "map" ? "MAP" : t.slice(0,3).toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ flex:1, overflowY: (showPanel === "log" || showPanel === "map") ? "hidden" : "auto", padding: (showPanel === "log" || showPanel === "map") ? "0" : "14px", display:"flex", flexDirection:"column" }}>
+            {showPanel === "stats" && (
+              <>
+                {Object.entries(STAT_META).map(([k, v]) => (
+                  <div key={k} style={{ marginBottom:"13px" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:"9px", color:v.color, marginBottom:"4px", letterSpacing:"1px" }}>
+                      <span>{v.icon} {v.label}</span>
+                      <span style={{ color:"#3d2e1a" }}>{stats[k]}</span>
+                    </div>
+                    <div className="stat-bar-track">
+                      <div className="stat-bar-fill" style={{ width:`${stats[k]}%`, background:v.color, boxShadow:`0 0 6px ${v.color}60` }}/>
+                    </div>
+                  </div>
+                ))}
+
+                <div style={{ marginTop:"16px", paddingTop:"14px", borderTop:"1px solid #0a0600" }}>
+                  <div style={{ fontSize:"9px", color:"#2d2316", letterSpacing:"2px", marginBottom:"8px" }}>LOCATION</div>
+                  <div style={{ color:"#8b5c1a", fontSize:"11px", fontFamily:"'IM Fell English',serif", fontStyle:"italic", lineHeight:1.6 }}>{location}</div>
+                </div>
+
+                {stats.honor <= 20 && (
+                  <div style={{ marginTop:"14px", padding:"10px", border:"1px solid #4a1a1a40", borderRadius:"3px", background:"#0d030320" }}>
+                    <div style={{ color:"#a78bfa", fontSize:"9px", letterSpacing:"1px", marginBottom:"4px" }}>⚠ HONOR BROKEN</div>
+                    <div style={{ color:"#4a2a4a", fontSize:"9px", lineHeight:1.6 }}>What you were is gone. What you're becoming is something else.</div>
+                  </div>
+                )}
+                {stats.darkness >= 80 && (
+                  <div style={{ marginTop:"8px", padding:"10px", border:"1px solid #2d0a2d40", borderRadius:"3px", background:"#0d020d20" }}>
+                    <div style={{ color:"#9333ea", fontSize:"9px", letterSpacing:"1px", marginBottom:"4px" }}>⚠ CORRUPTION RISING</div>
+                    <div style={{ color:"#3d1a3d", fontSize:"9px", lineHeight:1.6 }}>The darkness is rewriting you. You feel it in your hands.</div>
+                  </div>
+                )}
+                {stats.vitality <= 20 && (
+                  <div style={{ marginTop:"8px", padding:"10px", border:"1px solid #4a0a0a40", borderRadius:"3px", background:"#0d020220" }}>
+                    <div style={{ color:"#f87171", fontSize:"9px", letterSpacing:"1px" }}>⚠ CRITICAL VITALITY</div>
+                  </div>
+                )}
+
+                {pivotFlags.length > 0 && (
+                  <div style={{ marginTop:"16px", paddingTop:"14px", borderTop:"1px solid #0a0600" }}>
+                    <div style={{ fontSize:"9px", color:"#2d2316", letterSpacing:"2px", marginBottom:"10px" }}>PIVOTAL CHOICES</div>
+                    {pivotFlags.slice(-4).map((f, i) => (
+                      <div key={i} style={{ color:"#3d2a14", fontSize:"9px", marginBottom:"7px", lineHeight:1.6, borderLeft:"2px solid #3d1f08", paddingLeft:"6px" }}>{f}</div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {showPanel === "npc" && (
+              <>
+                <div style={{ fontSize:"9px", color:"#2d2316", letterSpacing:"2px", marginBottom:"14px" }}>KNOWN FIGURES</div>
+                {Object.entries(NPC_ROSTER).map(([key, npc]) => {
+                  const state = npcState[key];
+                  const trust = state.trust;
+                  const isDead = state.status === "dead";
+                  const isHostile = state.status === "hostile";
+                  const isUnknown = state.status === "unknown";
+                  const trustColor = isDead ? "#2d2d2d"
+                    : isHostile ? "#f87171"
+                    : trust >= 65 ? "#f59e0b"
+                    : trust >= 40 ? "#6b7280"
+                    : "#f87171";
+                  const trustLabel = isDead ? "DEAD"
+                    : isHostile ? "HOSTILE"
+                    : isUnknown ? "UNKNOWN"
+                    : trust >= 75 ? "ALLY"
+                    : trust >= 55 ? "TRUSTED"
+                    : trust >= 40 ? "NEUTRAL"
+                    : trust >= 20 ? "WARY"
+                    : "ENEMY";
+                  const statusDot = isDead ? "#3d3d3d"
+                    : isHostile ? "#f87171"
+                    : isUnknown ? "#3d2e1a"
+                    : trust >= 60 ? "#f59e0b"
+                    : trust >= 40 ? "#6b7280"
+                    : "#f87171";
+                  return (
+                    <div key={key} style={{
+                      marginBottom:"14px",
+                      padding:"10px",
+                      border:`1px solid ${isDead ? "#1a1a1a" : isHostile ? "#3a1010" : trust >= 60 ? "#2d1f0a" : "#1a1005"}`,
+                      borderRadius:"3px",
+                      background: isDead ? "#020202" : isHostile ? "#0d0202" : "#030108",
+                      opacity: isDead ? 0.55 : 1,
+                    }}>
+                      {/* Header row */}
+                      <div style={{ display:"flex", alignItems:"center", gap:"6px", marginBottom:"6px" }}>
+                        <div style={{ width:"6px", height:"6px", borderRadius:"50%", background:statusDot, flexShrink:0, boxShadow: !isDead && !isUnknown ? `0 0 4px ${statusDot}` : "none" }}/>
+                        <div style={{ flex:1, fontSize:"9px", color: isDead ? "#3d3d3d" : "#8b6840", letterSpacing:"0.5px", fontFamily:"'IM Fell English',serif", textDecoration: isDead ? "line-through" : "none" }}>
+                          {npc.icon} {npc.name}
+                        </div>
+                        <div style={{ fontSize:"7px", color:trustColor, letterSpacing:"1px" }}>{trustLabel}</div>
+                      </div>
+                      {/* Role */}
+                      <div style={{ fontSize:"7px", color:"#2d2316", letterSpacing:"1px", marginBottom:"6px" }}>{npc.role} · {npc.kingdom}</div>
+                      {/* Trust bar */}
+                      {!isDead && (
+                        <div style={{ marginBottom:"6px" }}>
+                          <div style={{ height:"2px", background:"#0a0600", borderRadius:"1px" }}>
+                            <div style={{
+                              height:"100%", borderRadius:"1px",
+                              width:`${trust}%`,
+                              background: isHostile
+                                ? "linear-gradient(90deg,#7f1d1d,#f87171)"
+                                : trust >= 65
+                                  ? "linear-gradient(90deg,#78350f,#f59e0b)"
+                                  : "linear-gradient(90deg,#1f2937,#6b7280)",
+                              transition:"width .8s ease",
+                              boxShadow: trust >= 65 && !isHostile ? "0 0 4px #f59e0b60" : "none"
+                            }}/>
+                          </div>
+                        </div>
+                      )}
+                      {/* Last seen */}
+                      <div style={{ fontSize:"8px", color:"#2d2316", lineHeight:1.6, fontStyle:"italic", fontFamily:"'IM Fell English',serif" }}>
+                        {state.lastSeen}
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {showPanel === "inventory" && (
+              <>
+                <div style={{ fontSize:"9px", color:"#2d2316", letterSpacing:"2px", marginBottom:"14px" }}>CARRIED</div>
+                {inventory.map((item, i) => (
+                  <div key={i} style={{ padding:"8px 10px", border:"1px solid #1a1005", borderRadius:"2px", marginBottom:"6px", background:"#030108" }}>
+                    <div style={{ color:"#8b5c1a", fontSize:"10px" }}>◆ {item}</div>
+                  </div>
+                ))}
+                {inventory.length === 0 && <div style={{ color:"#1a1005", fontSize:"10px" }}>Nothing carried.</div>}
+              </>
+            )}
+
+            {showPanel === "log" && (
+              <ParchmentScroll choiceLog={choiceLog} pivotFlags={pivotFlags} />
+            )}
+
+            {showPanel === "map" && (
+              <RealmMap location={location} currentEra={currentEra} />
+            )}
+          </div>
+        </div>
+
+        {/* Main terminal */}
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <div ref={termRef} style={{ flex:1, overflowY:"auto", padding:"28px 34px", background:"#010000" }} className={glitch ? "glitch-active" : ""}>
+            {loading && !typedText ? (
+              <div style={{ color:"#1a1005", fontSize:"13px" }}>
+                <span style={{ color:"#8b5c1a" }}>{">"}</span> The realm shifts
+                <span style={{ animation:"blink 1s step-end infinite", color:"#8b5c1a", marginLeft:"4px" }}>█</span>
+              </div>
+            ) : (
+              <>
+                <div style={{ color:"#8a7560", fontSize:"13px", lineHeight:2.2, whiteSpace:"pre-wrap", fontFamily:"'IM Fell English',serif" }}>
+                  {typedText}
+                  {isTyping && <span style={{ animation:"blink .7s step-end infinite", color:"#c4892a" }}>█</span>}
+                </div>
+
+                {!isTyping && choices.length > 0 && (
+                  <div className="fade-up" style={{ marginTop:"34px" }}>
+                    <div style={{ borderTop:"1px solid #0f0700", paddingTop:"20px", marginBottom:"18px", display:"flex", alignItems:"center", gap:"12px" }}>
+                      <div style={{ color:"#2d2316", fontSize:"9px", letterSpacing:"3px" }}>{">"} YOUR MOVE</div>
+                    </div>
+                    {choices.map((c, i) => (
+                      <button key={i} className="choice-btn" disabled={loading || isTyping} onClick={() => makeChoice(c)}>
+                        <span style={{ color:"#4a2a08", marginRight:"10px" }}>[{String.fromCharCode(65 + i)}]</span>{c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {loading && typedText && (
+                  <div style={{ marginTop:"16px", color:"#1a1005", fontSize:"12px" }}>
+                    <span style={{ color:"#6b3a0a" }}>{">"}</span> Consequences unfold
+                    <span style={{ animation:"blink 1s step-end infinite", color:"#8b5c1a", marginLeft:"4px" }}>█</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ borderTop:"1px solid #0a0600", padding:"7px 16px", display:"flex", gap:"18px", background:"#010000", flexShrink:0, flexWrap:"wrap", alignItems:"center" }}>
+            {Object.entries(STAT_META).map(([k, v]) => (
+              <span key={k} style={{ fontSize:"9px", color:v.color, letterSpacing:"1px" }}>
+                {v.icon} <span style={{ color:"#2d2316" }}>{stats[k]}</span>
+              </span>
+            ))}
+            <span style={{ fontSize:"9px", color:"#1a1005", marginLeft:"auto", letterSpacing:"1px" }}>
+              {currentEra.name.toUpperCase()}
+            </span>
+            {!musicPlaying && (
+              <button
+                onClick={() => setMusicPlaying(true)}
+                style={{ background:"none", border:"1px solid #2a1a08", borderRadius:"2px", cursor:"pointer", color:"#3d2e1a", fontSize:"8px", padding:"2px 7px", letterSpacing:"1px", fontFamily:"'Share Tech Mono',monospace" }}
+                title="Start ambient music"
+              >
+                ♪ MUSIC
+              </button>
+            )}
+            {musicPlaying && (
+              <AmbientPlayer eraId={currentEra.id} mood={mood} playing={musicPlaying} />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(Thornbound));
+  </script>
+</body>
+</html>
