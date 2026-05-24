@@ -1061,6 +1061,844 @@ const ORIGIN_SVGS = {
   },
 };
 
+// ─── PIXEL SCENE BANNER ───────────────────────────────────────────────────────
+
+// Dead Cells / Blasphemous style: dark silhouettes, layered parallax, cinematic particles
+
+const SCENE_CONFIGS = {
+  // mood-based overrides take priority
+  war:        { sky:["#1a0000","#2d0a00"], ground:"#0d0000", fog:"#3d0a0a", accent:"#8b0000", particles:"ember", npcCount:3 },
+  danger:     { sky:["#1a0800","#0d0000"], ground:"#060000", fog:"#2d0800", accent:"#c4400a", particles:"ember", npcCount:2 },
+  dread:      { sky:["#050008","#0a000f"], ground:"#030005", fog:"#150020", accent:"#6b21a8", particles:"void", npcCount:1 },
+  dark:       { sky:["#000005","#08000d"], ground:"#020004", fog:"#100018", accent:"#4a0080", particles:"void", npcCount:1 },
+  grief:      { sky:["#060609","#0a0a10"], ground:"#040408", fog:"#0f0f18", accent:"#4a5a7a", particles:"rain", npcCount:1 },
+  mysterious: { sky:["#03060a","#070a10"], ground:"#020408", fog:"#0a1020", accent:"#1a3a6a", particles:"mist", npcCount:1 },
+  tense:      { sky:["#080600","#100c00"], ground:"#060400", fog:"#180e00", accent:"#8b5c1a", particles:"ember", npcCount:2 },
+  intrigue:   { sky:["#040208","#080410"], ground:"#030106", fog:"#0c0318", accent:"#4a1a6a", particles:"mist", npcCount:2 },
+  calm:       { sky:["#020508","#05080e"], ground:"#020408", fog:"#080c14", accent:"#1a4a3a", particles:"mist", npcCount:1 },
+  triumphant: { sky:["#0a0800","#140e00"], ground:"#060500", fog:"#1a1200", accent:"#c4892a", particles:"ember", npcCount:2 },
+};
+
+const ERA_SCENES = {
+  1: { sky:["#030608","#060a10"], ground:"#020408", fog:"#080c18", accent:"#1a4060", particles:"mist", npcCount:1 },
+  2: { sky:["#080500","#100900"], ground:"#060400", fog:"#140900", accent:"#7a4010", particles:"ember", npcCount:2 },
+  3: { sky:["#0d0200","#160400"], ground:"#080100", fog:"#200600", accent:"#8b0000", particles:"ember", npcCount:3 },
+  4: { sky:["#050008","#0c0014"], ground:"#030005", fog:"#120018", accent:"#5a0090", particles:"void", npcCount:2 },
+};
+
+// Location-based environment shapes
+const LOCATION_THEMES = {
+  castle:     "castle",
+  throne:     "castle",
+  varenhold:  "castle",
+  silvenmoor: "coastal",
+  vael:       "coastal",
+  fort:       "castle",
+  hall:       "castle",
+  court:      "castle",
+  dungeon:    "dungeon",
+  prison:     "dungeon",
+  cell:       "dungeon",
+  cave:       "dungeon",
+  forest:     "forest",
+  wood:       "forest",
+  grove:      "forest",
+  swamp:      "swamp",
+  mirehold:   "swamp",
+  duskfen:    "swamp",
+  bog:        "swamp",
+  desert:     "desert",
+  ashgate:    "desert",
+  ashkeep:    "desert",
+  ruins:      "ruins",
+  dur:        "ruins",
+  caldrath:   "ruins",
+  camp:       "camp",
+  road:       "plains",
+  plains:     "plains",
+  field:      "plains",
+  battlefield:"plains",
+  coast:      "coastal",
+  port:       "coastal",
+  sea:        "coastal",
+};
+
+function getEnvType(location) {
+  if (!location) return "plains";
+  const l = location.toLowerCase();
+  for (const [key, env] of Object.entries(LOCATION_THEMES)) {
+    if (l.includes(key)) return env;
+  }
+  return "plains";
+}
+
+function PixelSceneBanner({ mood, location, era, origin, npcState, choiceMade, isLoading }) {
+  const canvasRef = useRef(null);
+  const stateRef = useRef({
+    particles: [],
+    frame: 0,
+    torches: [],
+    npcs: [],
+    flashAlpha: 0,
+    shakeX: 0,
+    shakeY: 0,
+    transAlpha: 0,
+    prevMood: null,
+    prevEnv: null,
+    stars: [],
+    clouds: [],
+    rain: [],
+    bgScrollX: 0,
+    mgScrollX: 0,
+    fgScrollX: 0,
+  });
+  const animRef = useRef(null);
+  const W = useRef(0), H = 200;
+  const SCALE = 3; // pixel size multiplier for chunky look
+
+  // Determine scene config
+  const sceneConfig = SCENE_CONFIGS[mood] || ERA_SCENES[era] || ERA_SCENES[1];
+  const envType = getEnvType(location);
+
+  // Track choice for cinematic flash
+  const prevChoiceRef = useRef(choiceMade);
+  const flashRef = useRef(false);
+
+  useEffect(() => {
+    if (choiceMade !== prevChoiceRef.current) {
+      prevChoiceRef.current = choiceMade;
+      stateRef.current.flashAlpha = 1.0;
+      stateRef.current.shakeX = (Math.random() - 0.5) * 12;
+      stateRef.current.shakeY = (Math.random() - 0.5) * 6;
+      stateRef.current.transAlpha = 1.0;
+    }
+  }, [choiceMade]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const s = stateRef.current;
+
+    // Init stars
+    s.stars = Array.from({length:60}, () => ({
+      x: Math.random(), y: Math.random() * 0.55,
+      size: Math.random() < 0.3 ? 2 : 1,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: 0.02 + Math.random() * 0.04,
+    }));
+    // Init clouds
+    s.clouds = Array.from({length:5}, () => ({
+      x: Math.random(), y: 0.05 + Math.random() * 0.3,
+      w: 0.1 + Math.random() * 0.2, h: 0.04 + Math.random() * 0.08,
+      speed: 0.0001 + Math.random() * 0.0002,
+      alpha: 0.08 + Math.random() * 0.15,
+    }));
+    // Init rain
+    s.rain = Array.from({length:80}, () => ({
+      x: Math.random(), y: Math.random(),
+      speed: 0.008 + Math.random() * 0.006,
+      len: 6 + Math.random() * 10,
+    }));
+    // Init NPCs
+    initNPCs(s, sceneConfig.npcCount);
+    // Init torches
+    s.torches = [];
+
+    const resize = () => {
+      W.current = canvas.parentElement?.offsetWidth || 800;
+      canvas.width = W.current;
+      canvas.height = H;
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas.parentElement);
+
+    const draw = () => {
+      const w = W.current;
+      const h = H;
+      if (w === 0) { animRef.current = requestAnimationFrame(draw); return; }
+
+      s.frame++;
+      const t = s.frame;
+      const cfg = SCENE_CONFIGS[mood] || ERA_SCENES[era] || ERA_SCENES[1];
+
+      ctx.save();
+
+      // Screen shake decay
+      if (Math.abs(s.shakeX) > 0.1) s.shakeX *= 0.75;
+      else s.shakeX = 0;
+      if (Math.abs(s.shakeY) > 0.1) s.shakeY *= 0.75;
+      else s.shakeY = 0;
+
+      ctx.translate(s.shakeX, s.shakeY);
+
+      // Sky gradient
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.7);
+      skyGrad.addColorStop(0, cfg.sky[0]);
+      skyGrad.addColorStop(1, cfg.sky[1]);
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(-10, -10, w + 20, h + 20);
+
+      // Stars (for dark moods)
+      if (["dark","dread","mysterious","intrigue","grief"].includes(mood) || era >= 3) {
+        s.stars.forEach(star => {
+          star.twinkle += star.speed;
+          const alpha = 0.3 + 0.5 * Math.abs(Math.sin(star.twinkle));
+          ctx.fillStyle = `rgba(200,200,255,${alpha})`;
+          const px = Math.round(star.x * w / SCALE) * SCALE;
+          const py = Math.round(star.y * h / SCALE) * SCALE;
+          ctx.fillRect(px, py, star.size * SCALE, star.size * SCALE);
+        });
+      }
+
+      // Moon (dread/dark/mysterious)
+      if (["dark","dread","mysterious"].includes(mood)) {
+        const mx = w * 0.8, my = h * 0.15, mr = 18;
+        const moonGlow = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 3);
+        moonGlow.addColorStop(0, "rgba(180,160,255,0.12)");
+        moonGlow.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = moonGlow;
+        ctx.fillRect(mx - mr * 3, my - mr * 3, mr * 6, mr * 6);
+        ctx.fillStyle = "#c0b0e0";
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
+        // Crater
+        ctx.fillStyle = "#a090c8";
+        ctx.beginPath(); ctx.arc(mx + 5, my - 3, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(mx - 6, my + 4, 3, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Sun (war/triumphant — blood red)
+      if (["war","danger","triumphant"].includes(mood)) {
+        const sx = w * 0.75, sy = h * 0.18;
+        const sunGlow = ctx.createRadialGradient(sx, sy, 0, sx, sy, 60);
+        sunGlow.addColorStop(0, mood === "triumphant" ? "rgba(200,140,0,0.3)" : "rgba(180,30,0,0.3)");
+        sunGlow.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = sunGlow;
+        ctx.fillRect(sx - 60, sy - 60, 120, 120);
+        ctx.fillStyle = mood === "triumphant" ? "#c4892a" : "#8b1a00";
+        drawPixelCircle(ctx, sx, sy, 14, SCALE);
+      }
+
+      // Clouds (parallax scroll)
+      s.bgScrollX = (s.bgScrollX + 0.0001) % 1;
+      s.clouds.forEach(cloud => {
+        cloud.x = (cloud.x + cloud.speed) % 1.2;
+        const cx = ((cloud.x + s.bgScrollX) % 1.2) * w - w * 0.1;
+        const cy = cloud.y * h;
+        ctx.fillStyle = `rgba(${cfg.fog.slice(1).match(/../g).map(x=>parseInt(x,16)).join(",")},${cloud.alpha})`;
+        drawPixelRect(ctx, cx, cy, cloud.w * w, cloud.h * h, SCALE);
+      });
+
+      // Environment-specific background buildings/silhouettes
+      drawEnvironment(ctx, envType, w, h, cfg, t, SCALE);
+
+      // Fog layer
+      const fogGrad = ctx.createLinearGradient(0, h * 0.55, 0, h);
+      fogGrad.addColorStop(0, "rgba(0,0,0,0)");
+      const fogRgb = hexToRgb(cfg.fog);
+      fogGrad.addColorStop(0.5, `rgba(${fogRgb},0.5)`);
+      fogGrad.addColorStop(1, `rgba(${fogRgb},0.9)`);
+      ctx.fillStyle = fogGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Ground/floor
+      const groundY = h * 0.78;
+      drawGroundStrips(ctx, envType, w, h, groundY, cfg, SCALE);
+
+      // Torches (castle/dungeon)
+      if (["castle","dungeon","ruins"].includes(envType) && s.torches.length === 0) {
+        s.torches = [];
+        for (let i = 0; i < 3; i++) {
+          s.torches.push({ x: 0.15 + i * 0.33, y: groundY - 45 - Math.random() * 20 });
+        }
+      }
+      s.torches.forEach(torch => {
+        drawTorch(ctx, torch.x * w, torch.y, t, cfg.accent, SCALE);
+      });
+
+      // Rain effect
+      if (["grief","mysterious"].includes(mood)) {
+        ctx.strokeStyle = "rgba(100,130,180,0.25)";
+        ctx.lineWidth = 1;
+        s.rain.forEach(drop => {
+          drop.y += drop.speed;
+          if (drop.y > 1) { drop.y = 0; drop.x = Math.random(); }
+          ctx.beginPath();
+          ctx.moveTo(drop.x * w, drop.y * h);
+          ctx.lineTo(drop.x * w - 2, drop.y * h + drop.len);
+          ctx.stroke();
+        });
+      }
+
+      // NPCs
+      updateNPCs(s, w, groundY, t);
+      s.npcs.forEach(npc => {
+        drawNPC(ctx, npc, t, cfg.accent, SCALE, origin, mood);
+      });
+
+      // Particles
+      updateParticles(s, w, h, cfg.particles, t);
+      drawParticles(ctx, s.particles, SCALE);
+
+      // Mist wisps
+      drawMist(ctx, w, h, t, cfg);
+
+      // Vignette
+      const vig = ctx.createRadialGradient(w/2, h/2, h*0.2, w/2, h/2, w*0.75);
+      vig.addColorStop(0, "rgba(0,0,0,0)");
+      vig.addColorStop(1, "rgba(0,0,0,0.7)");
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, w, h);
+
+      // Flash overlay (on choice)
+      if (s.flashAlpha > 0) {
+        const flashColor = mood === "war" || mood === "danger" ? "255,60,0"
+          : mood === "dread" || mood === "dark" ? "100,0,200"
+          : mood === "grief" ? "60,80,120"
+          : "200,140,40";
+        ctx.fillStyle = `rgba(${flashColor},${s.flashAlpha * 0.6})`;
+        ctx.fillRect(-10, -10, w + 20, h + 20);
+        s.flashAlpha = Math.max(0, s.flashAlpha - 0.045);
+        // Burst particles on flash
+        if (s.flashAlpha > 0.85) {
+          for (let i = 0; i < 20; i++) {
+            spawnParticle(s, w * 0.5, h * 0.6, cfg.particles);
+          }
+        }
+      }
+
+      // Transition fade (scene change)
+      if (s.transAlpha > 0) {
+        ctx.fillStyle = `rgba(0,0,0,${s.transAlpha * 0.8})`;
+        ctx.fillRect(-10, -10, w + 20, h + 20);
+        s.transAlpha = Math.max(0, s.transAlpha - 0.025);
+      }
+
+      // Loading indicator
+      if (isLoading) {
+        const pulseMag = 0.5 + 0.5 * Math.sin(t * 0.08);
+        ctx.strokeStyle = `rgba(${hexToRgb(cfg.accent)},${0.3 + 0.3 * pulseMag})`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(1, 1, w - 2, h - 2);
+      }
+
+      ctx.restore();
+      animRef.current = requestAnimationFrame(draw);
+    };
+
+    animRef.current = requestAnimationFrame(draw);
+    return () => {
+      cancelAnimationFrame(animRef.current);
+      ro.disconnect();
+    };
+  }, [mood, envType, era, origin]);
+
+  return (
+    <div style={{ position:"relative", width:"100%", height:`${H}px`, flexShrink:0, borderBottom:"1px solid #0f0700", overflow:"hidden" }}>
+      <canvas ref={canvasRef} style={{ display:"block", width:"100%", height:`${H}px`, imageRendering:"pixelated" }} />
+      {/* Location label overlay */}
+      <div style={{
+        position:"absolute", bottom:8, left:12,
+        fontSize:"8px", color:"rgba(180,140,80,0.6)",
+        letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace",
+        textShadow:"0 0 8px rgba(0,0,0,0.8)",
+        pointerEvents:"none",
+      }}>
+        {location ? location.toUpperCase() : "THE REALM"}
+      </div>
+      {/* Mood label */}
+      <div style={{
+        position:"absolute", bottom:8, right:12,
+        fontSize:"8px", color:`rgba(${hexToRgb(SCENE_CONFIGS[mood]?.accent || ERA_SCENES[era]?.accent || "#8b5c1a")},0.5)`,
+        letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace",
+        textShadow:"0 0 8px rgba(0,0,0,0.8)",
+        pointerEvents:"none",
+      }}>
+        {mood ? mood.toUpperCase() : ""}
+      </div>
+    </div>
+  );
+}
+
+// ── Scene Drawing Helpers ──────────────────────────────────────────────────────
+
+function hexToRgb(hex) {
+  if (!hex || hex[0] !== "#") return "180,140,80";
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+function drawPixelRect(ctx, x, y, w, h, scale) {
+  ctx.fillRect(Math.round(x/scale)*scale, Math.round(y/scale)*scale, Math.max(scale, Math.round(w/scale)*scale), Math.max(scale, Math.round(h/scale)*scale));
+}
+function drawPixelCircle(ctx, cx, cy, r, scale) {
+  for (let dy = -r; dy <= r; dy += scale) {
+    for (let dx = -r; dx <= r; dx += scale) {
+      if (dx*dx + dy*dy <= r*r) {
+        ctx.fillRect(Math.round((cx+dx)/scale)*scale, Math.round((cy+dy)/scale)*scale, scale, scale);
+      }
+    }
+  }
+}
+
+function drawEnvironment(ctx, envType, w, h, cfg, t, scale) {
+  const groundY = h * 0.78;
+  const accentRgb = hexToRgb(cfg.accent);
+
+  switch (envType) {
+    case "castle": {
+      // Far background castle silhouette
+      const castleColor = "#0a0508";
+      ctx.fillStyle = castleColor;
+      // Main keep
+      drawPixelRect(ctx, w*0.35, groundY-120, 90, 120, scale);
+      // Tower left
+      drawPixelRect(ctx, w*0.28, groundY-150, 40, 150, scale);
+      // Tower right
+      drawPixelRect(ctx, w*0.60, groundY-140, 40, 140, scale);
+      // Far background tower
+      ctx.fillStyle = "#070306";
+      drawPixelRect(ctx, w*0.15, groundY-90, 30, 90, scale);
+      drawPixelRect(ctx, w*0.72, groundY-100, 28, 100, scale);
+      // Battlements
+      ctx.fillStyle = castleColor;
+      for (let bx = w*0.28; bx < w*0.68; bx += 18) {
+        drawPixelRect(ctx, bx, groundY-156, 9, 12, scale);
+      }
+      for (let bx = w*0.28; bx < w*0.32; bx += 12) {
+        drawPixelRect(ctx, bx, groundY-162, 6, 15, scale);
+      }
+      for (let bx = w*0.60; bx < w*0.65; bx += 12) {
+        drawPixelRect(ctx, bx, groundY-148, 6, 15, scale);
+      }
+      // Arrow slits - windows glow
+      ctx.fillStyle = `rgba(${accentRgb},0.4)`;
+      drawPixelRect(ctx, w*0.45, groundY-90, 6, 15, scale);
+      drawPixelRect(ctx, w*0.52, groundY-90, 6, 15, scale);
+      drawPixelRect(ctx, w*0.30, groundY-110, 6, 20, scale);
+      drawPixelRect(ctx, w*0.62, groundY-105, 6, 20, scale);
+      // Gate arch
+      ctx.fillStyle = "#050204";
+      drawPixelRect(ctx, w*0.44, groundY-45, 30, 45, scale);
+      ctx.fillStyle = `rgba(${accentRgb},0.15)`;
+      drawPixelRect(ctx, w*0.44, groundY-45, 30, 45, scale);
+      break;
+    }
+    case "dungeon": {
+      ctx.fillStyle = "#060308";
+      // Arch ceiling
+      drawPixelRect(ctx, 0, 0, w, h*0.35, scale);
+      // Left wall stones
+      for (let sy = 10; sy < h; sy += 22) {
+        for (let sx = 0; sx < w*0.18; sx += 28) {
+          ctx.fillStyle = sx % 56 < 28 ? "#060308" : "#08040a";
+          drawPixelRect(ctx, sx, sy, 24, 18, scale);
+        }
+      }
+      // Right wall
+      for (let sy = 10; sy < h; sy += 22) {
+        for (let sx = w*0.82; sx < w; sx += 28) {
+          ctx.fillStyle = sx % 56 < 28 ? "#060308" : "#08040a";
+          drawPixelRect(ctx, sx, sy, 24, 18, scale);
+        }
+      }
+      // Chains
+      ctx.strokeStyle = "#1a1020";
+      ctx.lineWidth = scale;
+      for (let cy = 20; cy < h*0.5; cy += 12) {
+        ctx.beginPath(); ctx.moveTo(w*0.2, cy); ctx.lineTo(w*0.2 + 3, cy+6); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(w*0.8, cy); ctx.lineTo(w*0.8 - 3, cy+6); ctx.stroke();
+      }
+      // Drip
+      const dripPhase = (t * 0.01) % 1;
+      ctx.fillStyle = `rgba(${accentRgb},0.3)`;
+      drawPixelRect(ctx, w*0.35, h*0.1 + dripPhase * h*0.4, 3, 6, scale);
+      drawPixelRect(ctx, w*0.65, h*0.15 + ((dripPhase + 0.5) % 1) * h*0.35, 3, 6, scale);
+      break;
+    }
+    case "forest": {
+      // Background tree layers
+      [[0.04,"#040806",120],[0.08,"#060a08",100],[0.1,"#080c0a",80]].forEach(([density, color, maxH]) => {
+        ctx.fillStyle = color;
+        for (let tx = -30; tx < w + 30; tx += 35) {
+          const treeH = maxH * 0.7 + Math.sin(tx * 0.1) * maxH * 0.3;
+          drawTree(ctx, tx + Math.sin(tx*0.05)*10, groundY, treeH, scale, color);
+        }
+      });
+      // Mid foreground trees
+      ctx.fillStyle = "#050908";
+      for (let tx = 0; tx < w; tx += 55) {
+        const treeH = 80 + Math.sin(tx * 0.07) * 40;
+        drawTree(ctx, tx, groundY + 5, treeH, scale, "#050908");
+      }
+      // Glowing fireflies
+      for (let fi = 0; fi < 8; fi++) {
+        const fx = (Math.sin(t * 0.01 + fi * 1.7) * 0.4 + 0.5) * w;
+        const fy = groundY - 20 - Math.abs(Math.sin(t * 0.008 + fi)) * 60;
+        const falpha = 0.4 + 0.6 * Math.sin(t * 0.05 + fi * 2.3);
+        ctx.fillStyle = `rgba(100,200,120,${falpha * 0.8})`;
+        drawPixelRect(ctx, fx, fy, 3, 3, scale);
+      }
+      break;
+    }
+    case "swamp": {
+      ctx.fillStyle = "#040608";
+      // Dead trees
+      for (let tx = 0; tx < w; tx += 60) {
+        const treeH = 50 + Math.sin(tx * 0.15) * 30;
+        ctx.fillStyle = "#060808";
+        drawPixelRect(ctx, tx, groundY - treeH, 6, treeH, scale);
+        // Branches
+        ctx.fillStyle = "#050707";
+        drawPixelRect(ctx, tx - 20, groundY - treeH * 0.7, 20, 3, scale);
+        drawPixelRect(ctx, tx + 6, groundY - treeH * 0.55, 18, 3, scale);
+        drawPixelRect(ctx, tx - 10, groundY - treeH * 0.85, 14, 3, scale);
+      }
+      // Swamp gas bubbles
+      for (let bi = 0; bi < 5; bi++) {
+        const bx = (Math.sin(t * 0.005 + bi * 1.9) * 0.4 + 0.5) * w;
+        const by = groundY - ((t * 0.3 + bi * 40) % 60);
+        const balpha = 1 - (((t * 0.3 + bi * 40) % 60) / 60);
+        ctx.fillStyle = `rgba(60,120,60,${balpha * 0.5})`;
+        drawPixelRect(ctx, bx, by, 4, 4, scale);
+      }
+      // Water shimmer at bottom
+      for (let wx = 0; wx < w; wx += 9) {
+        const wAlpha = 0.1 + 0.05 * Math.sin(t * 0.04 + wx * 0.05);
+        ctx.fillStyle = `rgba(40,80,50,${wAlpha})`;
+        drawPixelRect(ctx, wx, groundY + 10, 6, 6, scale);
+      }
+      break;
+    }
+    case "desert": {
+      // Sand dunes in background
+      ctx.fillStyle = "#0a0700";
+      for (let di = 0; di < 4; di++) {
+        const dx = w * (di / 4);
+        const dh = 40 + di * 10;
+        ctx.beginPath();
+        ctx.moveTo(dx - 80, groundY);
+        ctx.quadraticCurveTo(dx + w / 8, groundY - dh, dx + w / 4 + 80, groundY);
+        ctx.fill();
+      }
+      // Obelisk / ruins silhouette
+      ctx.fillStyle = "#080600";
+      drawPixelRect(ctx, w*0.6, groundY-90, 14, 90, scale);
+      drawPixelRect(ctx, w*0.6 - 6, groundY-94, 26, 8, scale);
+      // Heat shimmer lines
+      for (let hi = 0; hi < 4; hi++) {
+        const hx = (hi * 0.22 + 0.1) * w;
+        const hy = groundY - 8 - Math.sin(t * 0.06 + hi) * 4;
+        ctx.fillStyle = `rgba(${accentRgb},0.06)`;
+        drawPixelRect(ctx, hx, hy, 30, 3, scale);
+      }
+      break;
+    }
+    case "ruins": {
+      ctx.fillStyle = "#06040a";
+      // Broken columns
+      for (let ci = 0; ci < 4; ci++) {
+        const cx = w * (0.15 + ci * 0.2);
+        const ch = 50 + Math.sin(ci * 1.4) * 40;
+        drawPixelRect(ctx, cx, groundY - ch, 15, ch, scale);
+        // Capital
+        drawPixelRect(ctx, cx - 5, groundY - ch, 25, 8, scale);
+        // Crack
+        ctx.fillStyle = "#03020508";
+        drawPixelRect(ctx, cx + 5, groundY - ch + 15, 3, ch * 0.4, scale);
+        ctx.fillStyle = "#06040a";
+        // Fallen piece
+        if (ci % 2 === 0) drawPixelRect(ctx, cx + 20, groundY - 9, 30, 9, scale);
+      }
+      // Arch
+      ctx.fillStyle = "#07050c";
+      drawPixelRect(ctx, w*0.45, groundY - 100, 20, 100, scale);
+      drawPixelRect(ctx, w*0.65, groundY - 100, 20, 100, scale);
+      drawPixelRect(ctx, w*0.45, groundY - 105, 40, 14, scale);
+      break;
+    }
+    case "coastal": {
+      // Distant ships
+      ctx.fillStyle = "#060810";
+      drawPixelRect(ctx, w*0.7, groundY-35, 50, 20, scale);
+      drawPixelRect(ctx, w*0.75, groundY-70, 4, 40, scale);
+      drawPixelRect(ctx, w*0.75, groundY-68, 20, 18, scale);
+      // Second ship
+      ctx.fillStyle = "#050710";
+      drawPixelRect(ctx, w*0.2, groundY-25, 35, 14, scale);
+      drawPixelRect(ctx, w*0.24, groundY-50, 3, 30, scale);
+      // Lighthouse
+      ctx.fillStyle = "#080a12";
+      drawPixelRect(ctx, w*0.1, groundY-90, 18, 90, scale);
+      drawPixelRect(ctx, w*0.08, groundY-94, 22, 8, scale);
+      const lightAlpha = 0.4 + 0.5 * Math.sin(t * 0.06);
+      ctx.fillStyle = `rgba(${accentRgb},${lightAlpha})`;
+      drawPixelRect(ctx, w*0.1 + 4, groundY-90, 10, 8, scale);
+      // Waves
+      for (let wv = 0; wv < w; wv += 30) {
+        const wAlpha = 0.15 + 0.1 * Math.sin(t * 0.03 + wv * 0.1);
+        ctx.fillStyle = `rgba(40,60,120,${wAlpha})`;
+        drawPixelRect(ctx, wv + Math.sin(t * 0.02 + wv) * 5, groundY + 5, 18, 4, scale);
+      }
+      break;
+    }
+    case "plains":
+    default: {
+      // Rolling hills silhouette
+      ctx.fillStyle = "#050400";
+      for (let hi = 3; hi >= 0; hi--) {
+        const hillAlpha = 0.5 + hi * 0.15;
+        ctx.fillStyle = `rgba(${hi*2},${hi},0,${hillAlpha})`;
+        ctx.beginPath();
+        ctx.moveTo(0, h);
+        for (let hx = 0; hx <= w; hx += 15) {
+          const hy = groundY - 15 - hi * 18 + Math.sin(hx * 0.015 + hi * 1.2) * (20 + hi * 15);
+          if (hx === 0) ctx.moveTo(0, hy);
+          else ctx.lineTo(hx, hy);
+        }
+        ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+      }
+      // Distant structure (keep or watchtower)
+      ctx.fillStyle = "#040300";
+      drawPixelRect(ctx, w*0.6, groundY-60, 12, 60, scale);
+      drawPixelRect(ctx, w*0.6 - 4, groundY-68, 20, 10, scale);
+      // Flag
+      const flagWave = Math.sin(t * 0.05) * 3;
+      ctx.fillStyle = `rgba(${accentRgb},0.5)`;
+      drawPixelRect(ctx, w*0.6 + 10, groundY - 68 - 18 + flagWave, 12, 8, scale);
+      break;
+    }
+  }
+}
+
+function drawTree(ctx, x, groundY, h, scale, color) {
+  ctx.fillStyle = color;
+  // Trunk
+  drawPixelRect(ctx, x - 3, groundY - h * 0.3, 6, h * 0.3, scale);
+  // Canopy layers
+  const levels = 3;
+  for (let l = 0; l < levels; l++) {
+    const lw = (h * 0.5) * (1 - l * 0.25);
+    const ly = groundY - h * 0.3 - h * 0.3 * (l + 1);
+    drawPixelRect(ctx, x - lw/2, ly, lw, h * 0.28, scale);
+  }
+}
+
+function drawGroundStrips(ctx, envType, w, h, groundY, cfg, scale) {
+  const strips = envType === "swamp"
+    ? [["#040608",16],["#050809",8],["#060a0a",5]]
+    : envType === "desert"
+    ? [["#0c0800",16],["#0e0900",8],["#100a00",5]]
+    : envType === "coastal"
+    ? [["#050810",16],["#060914",8]]
+    : [["#050400",16],["#060500",10],["#070600",6]];
+
+  strips.forEach(([color, thickness], i) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(0, groundY + i * (thickness - 2), w, thickness);
+  });
+}
+
+function drawTorch(ctx, x, y, t, accent, scale) {
+  // Wall mount
+  ctx.fillStyle = "#100818";
+  drawPixelRect(ctx, x - 3, y, 6, 20, scale);
+  // Flame (animated)
+  const flicker = Math.sin(t * 0.15 + x) * 0.5 + 0.5;
+  const flicker2 = Math.sin(t * 0.21 + x * 1.3) * 0.5 + 0.5;
+  const rgb = hexToRgb(accent);
+  // Glow
+  const glow = ctx.createRadialGradient(x, y - 5, 0, x, y - 5, 20 + flicker * 6);
+  glow.addColorStop(0, `rgba(${rgb},${0.2 + flicker * 0.15})`);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(x - 26, y - 30, 52, 52);
+  // Flame body
+  ctx.fillStyle = `rgba(${rgb},${0.7 + flicker * 0.3})`;
+  drawPixelRect(ctx, x - 3, y - 12, 6, 12, scale);
+  ctx.fillStyle = `rgba(255,220,100,${0.6 + flicker2 * 0.4})`;
+  drawPixelRect(ctx, x - 2, y - 18, 4, 8, scale);
+  ctx.fillStyle = `rgba(255,255,200,${0.5 + flicker * 0.5})`;
+  drawPixelRect(ctx, x - 1, y - 22 - Math.round(flicker * 3), 2, 6, scale);
+}
+
+function initNPCs(s, count) {
+  s.npcs = [];
+  const positions = [0.2, 0.45, 0.72, 0.35, 0.6];
+  for (let i = 0; i < Math.min(count, positions.length); i++) {
+    s.npcs.push({
+      x: positions[i],
+      dir: Math.random() > 0.5 ? 1 : -1,
+      state: "idle",
+      animFrame: Math.floor(Math.random() * 8),
+      animTimer: 0,
+      idleTimer: Math.random() * 120,
+      variant: i, // determines silhouette type
+      speed: 0.0003 + Math.random() * 0.0002,
+    });
+  }
+}
+
+function updateNPCs(s, w, groundY, t) {
+  s.npcs.forEach(npc => {
+    npc.animTimer++;
+    if (npc.animTimer % 12 === 0) npc.animFrame = (npc.animFrame + 1) % 8;
+
+    if (npc.state === "idle") {
+      npc.idleTimer--;
+      if (npc.idleTimer <= 0) {
+        npc.state = "walk";
+        npc.idleTimer = 80 + Math.random() * 200;
+      }
+    } else if (npc.state === "walk") {
+      npc.x += npc.dir * npc.speed;
+      npc.idleTimer--;
+      if (npc.x < 0.05) { npc.dir = 1; }
+      if (npc.x > 0.95) { npc.dir = -1; }
+      if (npc.idleTimer <= 0) {
+        npc.state = "idle";
+        npc.idleTimer = 60 + Math.random() * 180;
+      }
+    }
+  });
+}
+
+// Dead Cells style chunky pixel humanoid silhouette
+function drawNPC(ctx, npc, t, accent, scale, origin, mood) {
+  const px = npc.x * (ctx.canvas?.width || 800);
+  const groundY = (ctx.canvas?.height || 200) * 0.78;
+  const py = groundY;
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  drawPixelRect(ctx, px - 9, py - 2, 18, 4, scale);
+
+  // Leg animation
+  const legSwing = npc.state === "walk" ? Math.sin(t * 0.15 + npc.variant) * 5 : 0;
+  const bodyBob = npc.state === "walk" ? Math.abs(Math.sin(t * 0.15 + npc.variant)) * -2 : 0;
+  const dir = npc.dir;
+
+  // Base silhouette color - dark with slight accent tint
+  const rgb = hexToRgb(accent);
+  const bodyColor = `rgba(${rgb},0.15)`;
+  const bodyDark = "#080508";
+
+  // Legs
+  ctx.fillStyle = bodyDark;
+  drawPixelRect(ctx, px - 5, py - 16 + bodyBob, 4, 16, scale);
+  drawPixelRect(ctx, px + 1, py - 14 + bodyBob + legSwing, 4, 14, scale);
+
+  // Torso
+  drawPixelRect(ctx, px - 7, py - 34 + bodyBob, 14, 18, scale);
+
+  // Cape/cloak flowing
+  if (npc.variant === 0 || npc.variant === 3) {
+    const capeFlow = Math.sin(t * 0.04 + npc.variant) * 3;
+    drawPixelRect(ctx, px - 4 - (dir < 0 ? 4 : 0), py - 32 + bodyBob, 8 + Math.abs(capeFlow), 20, scale);
+  }
+
+  // Weapon
+  if (npc.variant === 0 || npc.variant === 2) {
+    // Sword
+    ctx.fillStyle = "#1a1018";
+    drawPixelRect(ctx, px + (dir > 0 ? 7 : -10), py - 40 + bodyBob, 3, 22, scale);
+    // Guard
+    drawPixelRect(ctx, px + (dir > 0 ? 4 : -12), py - 36 + bodyBob, 9, 3, scale);
+  } else if (npc.variant === 1) {
+    // Staff/book
+    ctx.fillStyle = `rgba(${rgb},0.4)`;
+    drawPixelRect(ctx, px + (dir > 0 ? 7 : -11), py - 46 + bodyBob, 3, 26, scale);
+    drawPixelRect(ctx, px + (dir > 0 ? 4 : -14), py - 48 + bodyBob, 9, 6, scale);
+  }
+
+  // Head
+  ctx.fillStyle = bodyDark;
+  drawPixelRect(ctx, px - 5, py - 44 + bodyBob, 10, 10, scale);
+
+  // Helmet/hat variants
+  if (npc.variant === 0) {
+    // Helmet
+    drawPixelRect(ctx, px - 6, py - 46 + bodyBob, 12, 4, scale);
+    drawPixelRect(ctx, px - 4, py - 50 + bodyBob, 8, 4, scale);
+  } else if (npc.variant === 3) {
+    // Noble hood
+    drawPixelRect(ctx, px - 7, py - 48 + bodyBob, 14, 6, scale);
+  }
+
+  // Eye glow (accent)
+  ctx.fillStyle = `rgba(${rgb},${0.5 + 0.3 * Math.sin(t * 0.05 + npc.variant)})`;
+  drawPixelRect(ctx, px + (dir > 0 ? 1 : -3), py - 40 + bodyBob, 2, 2, scale);
+}
+
+function initParticles(s) { s.particles = []; }
+
+function spawnParticle(s, x, y, type) {
+  const angle = Math.random() * Math.PI * 2;
+  const speed = 0.5 + Math.random() * 2.5;
+  s.particles.push({
+    x, y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed - 1.5,
+    life: 1.0,
+    decay: 0.01 + Math.random() * 0.025,
+    size: 1 + Math.floor(Math.random() * 2),
+    type,
+  });
+}
+
+function updateParticles(s, w, h, type, t) {
+  // Ambient spawning
+  const groundY = h * 0.78;
+  if (t % 4 === 0) {
+    const spawnX = Math.random() * w;
+    const spawnY = groundY - Math.random() * 40;
+    spawnParticle(s, spawnX, spawnY, type);
+    if (type === "ember" || type === "void") {
+      spawnParticle(s, Math.random() * w, groundY - 10, type);
+    }
+  }
+  // Update
+  s.particles = s.particles.filter(p => {
+    p.x += p.vx;
+    p.vy += type === "void" ? -0.04 : type === "rain" ? 0.15 : -0.03;
+    p.y += p.vy;
+    p.life -= p.decay;
+    if (type === "mist") { p.vx *= 0.98; p.vy *= 0.95; }
+    return p.life > 0 && p.y > -10 && p.y < h + 10;
+  });
+  // Cap
+  if (s.particles.length > 200) s.particles.splice(0, s.particles.length - 200);
+}
+
+function drawParticles(ctx, particles, scale) {
+  particles.forEach(p => {
+    let color;
+    switch (p.type) {
+      case "ember": color = `rgba(${Math.round(200 + p.life * 55)},${Math.round(80 + p.life * 60)},10,${p.life * 0.8})`; break;
+      case "void":  color = `rgba(${Math.round(120 + p.life * 80)},20,${Math.round(180 + p.life * 75)},${p.life * 0.7})`; break;
+      case "rain":  color = `rgba(80,100,180,${p.life * 0.4})`; break;
+      case "mist":  color = `rgba(140,150,180,${p.life * 0.15})`; break;
+      default:      color = `rgba(200,180,100,${p.life * 0.6})`;
+    }
+    ctx.fillStyle = color;
+    const size = p.size * scale;
+    ctx.fillRect(Math.round(p.x / scale) * scale, Math.round(p.y / scale) * scale, size, size);
+  });
+}
+
+function drawMist(ctx, w, h, t, cfg) {
+  const mistRgb = hexToRgb(cfg.fog);
+  for (let mi = 0; mi < 3; mi++) {
+    const mx = ((t * 0.004 * (mi + 1) * 0.5) % 1.5 - 0.25) * w;
+    const my = h * (0.55 + mi * 0.08);
+    const grad = ctx.createRadialGradient(mx + w * 0.3, my, 0, mx + w * 0.3, my, w * 0.45);
+    grad.addColorStop(0, `rgba(${mistRgb},${0.06 + mi * 0.02})`);
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, my - h * 0.2, w, h * 0.5);
+  }
+}
+
 function CharacterPortrait({ origin, darkness, honor, vitality }) {
   const d = darkness;
   const shadowOpacity   = Math.min(0.7, Math.max(0, (d - 30) / 70));
@@ -1400,6 +2238,8 @@ function Thornbound() {
   const worldEventTimerRef = useRef(null);
   // Legacy
   const [legacy] = useState(() => loadLegacy());
+  // Pixel scene — choice counter triggers cinematic flash
+  const [choiceMade, setChoiceMade] = useState(0);
 
   // Check for existing save on mount
   useEffect(() => {
@@ -1533,6 +2373,7 @@ function Thornbound() {
   const makeChoice = async (choice) => {
     if (isTyping || loading) return;
     triggerGlitch();
+    setChoiceMade(c => c + 1);
     const newTurn = turn + 1;
     const userMsg = `My choice: ${choice}`;
     const updatedMsgs = [...messages, { role: "user", content: userMsg }];
@@ -2605,6 +3446,18 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
 
         {/* Main terminal */}
         <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+
+          {/* Pixel art scene banner */}
+          <PixelSceneBanner
+            mood={mood}
+            location={location}
+            era={currentEra.id}
+            origin={selectedOrigin}
+            npcState={npcState}
+            choiceMade={choiceMade}
+            isLoading={loading}
+          />
+
           <div ref={termRef} style={{ flex:1, overflowY:"auto", padding:"28px 34px", background:"#010000" }} className={glitch ? "glitch-active" : ""}>
             {loading && !typedText ? (
               <div style={{ color:"#1a1005", fontSize:"13px" }}>
