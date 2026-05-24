@@ -1930,15 +1930,23 @@ const SPRITE_POSITIONS = {
 };
 const SPRITE_COLS = 4; // 326px per character
 
+// icons.png: 1304×299px, 4 chars each 326px wide
+// Order: bastard_knight | court_scholar | sellsword | fallen_noble
+const ICON_SPRITE = "icons.png";
+const ICON_SPRITE_COLS = 4;
+const ICON_SPRITE_W = 1304;
+const ICON_SPRITE_H = 299;
+const ICON_CHAR_W = ICON_SPRITE_W / ICON_SPRITE_COLS; // 326
+const ICON_POSITIONS = { bastard_knight: 0, court_scholar: 1, sellsword: 2, fallen_noble: 3 };
+
 function CharacterPortrait({ origin, darkness, honor, vitality }) {
   const d = darkness;
   const overlayRef = useRef(null);
   const animRef    = useRef(null);
   const frameRef   = useRef(0);
 
-  const voidPulse      = d >= 75;
-  const corruptionAura = d >= 55;
-  const flickering     = vitality <= 20;
+  const voidPulse  = d >= 75;
+  const flickering = vitality <= 20;
 
   const corruptLabel = d >= 90 ? "THE VOID CLAIMS YOU"
     : d >= 75 ? "CORRUPTION: CRITICAL"
@@ -1951,7 +1959,18 @@ function CharacterPortrait({ origin, darkness, honor, vitality }) {
     : honor <= 25 ? "HONOR: BROKEN"
     : null;
 
-  // Animated canvas overlay for corruption / void effects
+  // Sprite display dimensions — panel is ~160px wide, maintain aspect ratio
+  const DISPLAY_W = 160;
+  const DISPLAY_H = Math.round((ICON_SPRITE_H / ICON_CHAR_W) * DISPLAY_W); // ~146px
+  const spriteIdx = origin ? (ICON_POSITIONS[origin] ?? 0) : 0;
+  // objectPosition shifts the sprite so only this character's column shows
+  // Each char is ICON_CHAR_W px wide in the original; scaled to DISPLAY_W
+  // shift = -(spriteIdx * DISPLAY_W)
+  const spriteShiftX = -(spriteIdx * DISPLAY_W);
+
+  // Animated canvas overlay — eye glow and aura scaled to pixel sprite
+  // Pixel sprite: head is roughly top 38% of the sprite height
+  // Eyes sit at ~28% down, horizontally centered ±18% from centre
   useEffect(() => {
     const canvas = overlayRef.current;
     if (!canvas) return;
@@ -1964,25 +1983,33 @@ function CharacterPortrait({ origin, darkness, honor, vitality }) {
       const t = frameRef.current;
       ctx.clearRect(0, 0, W, H);
 
-      // Corruption aura
+      // Purple corruption aura radiating around the whole sprite (darkness ≥ 55)
       if (d >= 55) {
-        const auraAlpha = 0.25 + 0.15 * Math.sin(t * 0.04);
-        const grad = ctx.createRadialGradient(W/2, H*0.45, 0, W/2, H*0.45, W*0.52);
-        grad.addColorStop(0, `rgba(74,0,128,${auraAlpha})`);
-        grad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = grad;
+        const auraAlpha = 0.3 + 0.18 * Math.sin(t * 0.04);
+        // Outer ring glow — edges of the sprite
+        const outerGrad = ctx.createRadialGradient(W/2, H*0.5, W*0.25, W/2, H*0.5, W*0.78);
+        outerGrad.addColorStop(0, "rgba(0,0,0,0)");
+        outerGrad.addColorStop(0.6, `rgba(74,0,128,${auraAlpha * 0.5})`);
+        outerGrad.addColorStop(1, `rgba(147,51,234,${auraAlpha})`);
+        ctx.fillStyle = outerGrad;
+        ctx.fillRect(0, 0, W, H);
+        // Inner body glow pulse
+        const bodyGrad = ctx.createRadialGradient(W/2, H*0.55, 0, W/2, H*0.55, W*0.45);
+        bodyGrad.addColorStop(0, `rgba(74,0,128,${auraAlpha * 0.4})`);
+        bodyGrad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = bodyGrad;
         ctx.fillRect(0, 0, W, H);
       }
 
       // Shadow bleed tendrils (darkness ≥ 35)
       if (d >= 35) {
-        const shadowAlpha = Math.min(0.6, (d - 35) / 65) * (0.7 + 0.3 * Math.sin(t * 0.03));
+        const shadowAlpha = Math.min(0.55, (d - 35) / 65) * (0.7 + 0.3 * Math.sin(t * 0.03));
         ctx.strokeStyle = `rgba(26,0,40,${shadowAlpha})`;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 4]);
         const cx = W / 2;
-        [[cx - 18, H*0.42, cx - 30, H*0.25], [cx + 18, H*0.48, cx + 30, H*0.28],
-         [cx - 10, H*0.78, cx - 18, H*0.95], [cx + 10, H*0.82, cx + 22, H*0.97]].forEach(([x1,y1,x2,y2]) => {
+        [[cx - 20, H*0.55, cx - 34, H*0.72], [cx + 20, H*0.58, cx + 34, H*0.74],
+         [cx - 10, H*0.82, cx - 22, H*0.97], [cx + 10, H*0.84, cx + 24, H*0.98]].forEach(([x1,y1,x2,y2]) => {
           ctx.beginPath(); ctx.moveTo(x1 + Math.sin(t*0.025)*2, y1); ctx.lineTo(x2, y2); ctx.stroke();
         });
         ctx.setLineDash([]);
@@ -1990,31 +2017,40 @@ function CharacterPortrait({ origin, darkness, honor, vitality }) {
 
       // Void consume overlay (darkness ≥ 75)
       if (d >= 75) {
-        const voidAlpha = Math.min(0.55, (d - 75) / 25 * 0.55) * (0.8 + 0.2 * Math.sin(t * 0.06));
-        const vGrad = ctx.createRadialGradient(W/2, H*0.5, 0, W/2, H*0.5, W*0.45);
+        const voidAlpha = Math.min(0.5, (d - 75) / 25 * 0.5) * (0.8 + 0.2 * Math.sin(t * 0.06));
+        const vGrad = ctx.createRadialGradient(W/2, H*0.5, 0, W/2, H*0.5, W*0.52);
         vGrad.addColorStop(0, `rgba(45,0,80,${voidAlpha})`);
-        vGrad.addColorStop(0.6, `rgba(13,0,32,${voidAlpha*0.7})`);
+        vGrad.addColorStop(0.5, `rgba(13,0,32,${voidAlpha * 0.7})`);
         vGrad.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = vGrad;
         ctx.fillRect(0, 0, W, H);
       }
 
-      // Eye glow (darkness ≥ 55) — positioned roughly in portrait eye area
+      // Eye glow on the pixel sprite (darkness ≥ 55)
+      // Pixel characters: eyes are ~28% from top, roughly ±14% from horizontal centre
       if (d >= 55) {
-        const eyeAlpha = 0.7 + 0.3 * Math.sin(t * 0.07);
-        const eyeY = H * 0.22;
-        const eyeColor = honor <= 25 ? `rgba(248,113,113,${eyeAlpha})` : `rgba(147,51,234,${eyeAlpha})`;
-        ctx.fillStyle = eyeColor;
+        const eyeAlpha = 0.8 + 0.2 * Math.sin(t * 0.08);
+        const eyeY = H * 0.28;
+        const eyeR = Math.max(1.5, W * 0.025); // scale radius with panel width
+        const eyeColor = honor <= 25
+          ? `rgba(248,113,113,${eyeAlpha})`
+          : `rgba(147,51,234,${eyeAlpha})`;
+        // Glow bloom first (larger, soft)
         ctx.shadowColor = eyeColor;
-        ctx.shadowBlur = 8;
-        ctx.beginPath(); ctx.arc(W*0.42, eyeY, 2.5, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(W*0.58, eyeY, 2.5, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = eyeColor;
+        ctx.beginPath(); ctx.arc(W * 0.43, eyeY, eyeR * 1.8, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(W * 0.57, eyeY, eyeR * 1.8, 0, Math.PI*2); ctx.fill();
         ctx.shadowBlur = 0;
+        // Bright core dot
+        ctx.fillStyle = honor <= 25 ? `rgba(255,200,200,${eyeAlpha})` : `rgba(220,180,255,${eyeAlpha})`;
+        ctx.beginPath(); ctx.arc(W * 0.43, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(W * 0.57, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
       }
 
       // Low vitality — dim flicker
       if (vitality <= 20) {
-        const flickAlpha = 0.2 + 0.35 * (Math.random() > 0.95 ? 1 : 0);
+        const flickAlpha = 0.18 + 0.32 * (Math.random() > 0.95 ? 1 : 0);
         ctx.fillStyle = `rgba(0,0,0,${flickAlpha})`;
         ctx.fillRect(0, 0, W, H);
       }
@@ -2026,13 +2062,11 @@ function CharacterPortrait({ origin, darkness, honor, vitality }) {
     return () => cancelAnimationFrame(animRef.current);
   }, [d, honor, vitality]);
 
-  const charImg = origin ? CHAR_IMGS[origin] : null;
-
   return (
     <div style={{
       borderBottom:"1px solid #0a0600",
       position:"relative",
-      background: d >= 75 ? "radial-gradient(ellipse at 50% 60%, #0d001a 0%, #000 70%)" : "#010000",
+      background: d >= 75 ? "radial-gradient(ellipse at 50% 55%, #0d001a 0%, #000 70%)" : "#010000",
       overflow:"hidden",
     }}>
       <style>{`
@@ -2040,29 +2074,34 @@ function CharacterPortrait({ origin, darkness, honor, vitality }) {
         @keyframes portraitFlick  { 0%,100%{opacity:1} 94%{opacity:.9} 96%{opacity:.35} 98%{opacity:.8} }
       `}</style>
 
-      {/* Portrait image */}
-      <div style={{ position:"relative", width:"100%", overflow:"hidden" }}>
-        {charImg && (
-          <img
-            src={charImg}
-            alt={origin}
-            style={{
-              display:"block",
-              width:"100%",
-              height:"auto",
-              imageRendering:"pixelated",
-              animation: flickering ? "portraitFlick 3s step-end infinite" : voidPulse ? "voidPulse 3s ease infinite" : undefined,
-              opacity: vitality <= 0 ? 0.2 : 1,
-              transition:"opacity 1s ease",
-            }}
-          />
-        )}
+      {/* Sprite icon using icons.png */}
+      <div style={{
+        position:"relative",
+        width:`${DISPLAY_W}px`,
+        height:`${DISPLAY_H}px`,
+        overflow:"hidden",
+        margin:"0 auto",
+      }}>
+        <img
+          src={ICON_SPRITE}
+          alt={origin || "character"}
+          style={{
+            display:"block",
+            width:`${DISPLAY_W * ICON_SPRITE_COLS}px`, // full sprite sheet width scaled
+            height:`${DISPLAY_H}px`,
+            imageRendering:"pixelated",
+            transform:`translateX(${spriteShiftX}px)`,
+            animation: flickering ? "portraitFlick 3s step-end infinite" : voidPulse ? "voidPulse 3s ease infinite" : undefined,
+            opacity: vitality <= 0 ? 0.2 : 1,
+            transition:"opacity 1s ease",
+          }}
+        />
 
-        {/* Canvas for animated corruption overlays */}
+        {/* Canvas for animated corruption overlays — sits over the sprite */}
         <canvas
           ref={overlayRef}
-          width={160}
-          height={148}
+          width={DISPLAY_W}
+          height={DISPLAY_H}
           style={{
             position:"absolute", inset:0, width:"100%", height:"100%",
             pointerEvents:"none",
@@ -2071,7 +2110,7 @@ function CharacterPortrait({ origin, darkness, honor, vitality }) {
 
         {/* Bottom gradient fade into panel */}
         <div style={{
-          position:"absolute", bottom:0, left:0, right:0, height:"30%",
+          position:"absolute", bottom:0, left:0, right:0, height:"28%",
           background:"linear-gradient(transparent, #010000)",
           pointerEvents:"none",
         }}/>
@@ -2083,7 +2122,6 @@ function CharacterPortrait({ origin, darkness, honor, vitality }) {
           {origin ? ORIGINS[origin].name.toUpperCase() : "UNKNOWN"}
         </div>
 
-        {/* Corruption / honor status labels */}
         {corruptLabel && (
           <div style={{
             textAlign:"center", fontSize:"7px",
@@ -3325,30 +3363,6 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
     <div className="crt" style={{ height:"100vh", background:"#000", display:"flex", flexDirection:"column", fontFamily:"'Share Tech Mono',monospace", overflow:"hidden", position:"fixed", inset:0 }}>
       <style>{css}</style>
       <div className="scanline"/>
-
-      {/* In-game character icon — fixed bottom-left */}
-      {selectedOrigin && CHAR_IMGS[selectedOrigin] && (
-        <div style={{
-          position:"fixed", bottom:"20px", left:"20px",
-          background:"rgba(0,0,0,0.85)", border:"1px solid #3a2f1e",
-          padding:"8px", zIndex:9999, borderRadius:"2px",
-          display:"flex", flexDirection:"column", alignItems:"center", gap:"4px",
-        }}>
-          <img
-            src={CHAR_IMGS[selectedOrigin]}
-            alt={ORIGINS[selectedOrigin]?.name || ""}
-            style={{
-              width:"56px", height:"56px",
-              objectFit:"cover", objectPosition:"center top",
-              imageRendering:"pixelated", display:"block",
-              borderRadius:"1px",
-            }}
-          />
-          <div style={{ fontSize:"7px", color:"#6b4c1e", letterSpacing:"1px", fontFamily:"'Share Tech Mono',monospace", textAlign:"center", maxWidth:"56px", lineHeight:1.3 }}>
-            {ORIGINS[selectedOrigin]?.name?.toUpperCase() || ""}
-          </div>
-        </div>
-      )}
 
       {/* Era transition overlay */}
       {eraTransition && (
