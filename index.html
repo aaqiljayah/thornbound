@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Thornbound — A Dark Fantasy Chronicle</title>
   <meta name="description" content="Five kingdoms. One fragile peace. The realm does not care who you are. Only what you choose."/>
-  <style>* { margin:0; padding:0; box-sizing:border-box; } body { background:#000; overflow:hidden; }</style>
+  <style>* { margin:0; padding:0; box-sizing:border-box; } body { background:#000; overflow-x:hidden; overflow-y:auto; }</style>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -274,6 +274,122 @@ const MUSIC_TRACK_POOLS = {
     { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Peripheral%20Visions.mp3", label: "Peripheral Visions" },
   ],
 };
+// ─── MENU / LORE MUSIC ────────────────────────────────────────────────────────
+const MENU_TRACK_POOLS = [
+  { url: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Folk%20Round.mp3", label: "Folk Round" },
+];
+
+function LorePlayer() {
+  const audioRef = useRef(null);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.3);
+  const [started, setStarted] = useState(false);
+  const [trackLabel, setTrackLabel] = useState("");
+
+  const pickMenuTrack = () => MENU_TRACK_POOLS[Math.floor(Math.random() * MENU_TRACK_POOLS.length)];
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const track = pickMenuTrack();
+    setTrackLabel(track.label);
+    audio.src = track.url;
+    audio.loop = true;
+    audio.volume = volume;
+    // Autoplay on first user interaction if blocked
+    const tryPlay = () => {
+      audio.play().then(() => setStarted(true)).catch(() => {});
+    };
+    tryPlay();
+    const onInteract = () => { if (!started) { tryPlay(); document.removeEventListener("click", onInteract); } };
+    document.addEventListener("click", onInteract);
+    audio.addEventListener("ended", () => {
+      const next = pickMenuTrack();
+      setTrackLabel(next.label);
+      audio.src = next.url;
+      audio.play().catch(() => {});
+    });
+    return () => {
+      document.removeEventListener("click", onInteract);
+      audio.pause();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
+  }, [muted, volume]);
+
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:"8px", position:"fixed", bottom:"18px", right:"24px", zIndex:100, background:"rgba(1,0,0,0.7)", border:"1px solid #1a1005", borderRadius:"3px", padding:"7px 12px", backdropFilter:"blur(4px)" }}>
+      <audio ref={audioRef} preload="auto" />
+      <button onClick={() => setMuted(m => !m)} style={{ background:"none", border:"none", cursor:"pointer", color: muted ? "#2d2316" : "#8b5c1a", fontSize:"13px", padding:0, lineHeight:1 }} title={muted?"Unmute":"Mute"}>
+        {muted ? "🔇" : "🔊"}
+      </button>
+      <input type="range" min="0" max="1" step="0.05" value={muted ? 0 : volume}
+        onChange={e => { setVolume(Number(e.target.value)); setMuted(Number(e.target.value) === 0); }}
+        style={{ width:"50px", accentColor:"#8b5c1a", cursor:"pointer" }} title="Volume"
+      />
+      {trackLabel && (
+        <span style={{ fontSize:"8px", color:"#3d2e1a", letterSpacing:"0.5px", maxWidth:"100px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{trackLabel}</span>
+      )}
+    </div>
+  );
+}
+
+function IntroPlayer() {
+  const audioRef = useRef(null);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.3);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    // Eerie, ominous tracks for the "about to begin" moment
+    const tracks = [
+      "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ossuary%201%20-%20Alone.mp3",
+    ];
+    audio.src = tracks[0];
+    audio.loop = true;
+    audio.volume = 0;
+    const tryPlay = () => audio.play().catch(() => {});
+    tryPlay();
+    const onInteract = () => { tryPlay(); document.removeEventListener("click", onInteract); };
+    document.addEventListener("click", onInteract);
+    // Fade in slowly
+    const fadeIn = setInterval(() => {
+      if (audio.volume < volume - 0.01) audio.volume = Math.min(volume, audio.volume + 0.01);
+      else { audio.volume = volume; clearInterval(fadeIn); }
+    }, 80);
+    return () => {
+      clearInterval(fadeIn);
+      document.removeEventListener("click", onInteract);
+      // Fade out on unmount
+      const fadeOut = setInterval(() => {
+        if (audio.volume > 0.02) audio.volume = Math.max(0, audio.volume - 0.03);
+        else { clearInterval(fadeOut); audio.pause(); }
+      }, 60);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
+  }, [muted, volume]);
+
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:"8px", position:"fixed", bottom:"18px", right:"24px", zIndex:100, background:"rgba(1,0,0,0.7)", border:"1px solid #1a0828", borderRadius:"3px", padding:"7px 12px", backdropFilter:"blur(4px)" }}>
+      <audio ref={audioRef} preload="auto" />
+      <button onClick={() => setMuted(m => !m)} style={{ background:"none", border:"none", cursor:"pointer", color: muted ? "#2d2316" : "#6b21a8", fontSize:"13px", padding:0, lineHeight:1 }} title={muted?"Unmute":"Mute"}>
+        {muted ? "🔇" : "🔊"}
+      </button>
+      <input type="range" min="0" max="1" step="0.05" value={muted ? 0 : volume}
+        onChange={e => { setVolume(Number(e.target.value)); setMuted(Number(e.target.value) === 0); }}
+        style={{ width:"50px", accentColor:"#6b21a8", cursor:"pointer" }} title="Volume"
+      />
+      <span style={{ fontSize:"8px", color:"#3a1a5a", letterSpacing:"0.5px" }}>Ossuary — Alone</span>
+    </div>
+  );
+}
+
 // Legacy single-track object for AmbientPlayer compat — resolved at runtime from pools
 const pickTrack = (key) => {
   const pool = MUSIC_TRACK_POOLS[key];
@@ -1767,43 +1883,44 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
     const page = LORE_INTRO_PAGES[lorePage];
     const isLast = lorePage === LORE_INTRO_PAGES.length - 1;
     return (
-      <div className="crt" style={{ minHeight:"100vh", background:"#010000", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Share Tech Mono',monospace", padding:"24px", animation:"flicker 15s infinite", overflowY:"auto" }}>
+      <div className="crt" style={{ minHeight:"100vh", background:"#010000", display:"flex", alignItems:"flex-start", justifyContent:"center", fontFamily:"'Share Tech Mono',monospace", padding:"40px 24px", animation:"flicker 15s infinite" }}>
         <style>{css}</style>
         <div className="scanline"/>
-        <div style={{ maxWidth:"680px", width:"100%", textAlign:"center" }}>
+        <LorePlayer />
+        <div style={{ maxWidth:"760px", width:"100%", textAlign:"center" }}>
           {/* Title */}
-          <div style={{ fontFamily:"'Cinzel Decorative',serif", fontWeight:900, fontSize:"clamp(24px,5vw,52px)", color:"#c4892a", marginBottom:"4px", textShadow:"0 0 40px rgba(196,122,42,.5)" }}>THORNBOUND</div>
-          <div style={{ color:"#2d2316", fontSize:"9px", letterSpacing:"6px", marginBottom:"32px" }}>A DARK FANTASY CHRONICLE</div>
+          <div style={{ fontFamily:"'Cinzel Decorative',serif", fontWeight:900, fontSize:"clamp(28px,6vw,60px)", color:"#c4892a", marginBottom:"6px", textShadow:"0 0 40px rgba(196,122,42,.5)" }}>THORNBOUND</div>
+          <div style={{ color:"#5a4a34", fontSize:"11px", letterSpacing:"6px", marginBottom:"36px" }}>A DARK FANTASY CHRONICLE</div>
 
           {/* Page indicator */}
-          <div style={{ display:"flex", justifyContent:"center", gap:"8px", marginBottom:"32px" }}>
+          <div style={{ display:"flex", justifyContent:"center", gap:"10px", marginBottom:"32px" }}>
             {LORE_INTRO_PAGES.map((_, i) => (
-              <div key={i} onClick={() => setLorePage(i)} style={{ width:"28px", height:"2px", background: i === lorePage ? "#c4892a" : "#1a1005", cursor:"pointer", transition:"background .2s", borderRadius:"1px" }}/>
+              <div key={i} onClick={() => setLorePage(i)} style={{ width:"32px", height:"3px", background: i === lorePage ? "#c4892a" : "#2a1a08", cursor:"pointer", transition:"background .2s", borderRadius:"2px" }}/>
             ))}
           </div>
 
           {/* Page content */}
-          <div style={{ border:"1px solid #1a1005", borderRadius:"4px", padding:"32px", background:"#03010a", textAlign:"left", minHeight:"320px", animation:"fadeUp .4s ease" }} key={lorePage}>
-            <div style={{ display:"flex", alignItems:"center", gap:"14px", marginBottom:"24px" }}>
-              <div style={{ fontSize:"28px" }}>{page.icon}</div>
-              <div style={{ fontFamily:"'Cinzel',serif", fontWeight:700, color:"#c4892a", fontSize:"18px", letterSpacing:"1px" }}>{page.title}</div>
+          <div style={{ border:"1px solid #2a1a08", borderRadius:"4px", padding:"36px", background:"#03010a", textAlign:"left", minHeight:"340px", animation:"fadeUp .4s ease" }} key={lorePage}>
+            <div style={{ display:"flex", alignItems:"center", gap:"16px", marginBottom:"28px" }}>
+              <div style={{ fontSize:"32px" }}>{page.icon}</div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontWeight:700, color:"#c4892a", fontSize:"22px", letterSpacing:"1px" }}>{page.title}</div>
             </div>
 
             {page.content && (
-              <div style={{ color:"#8a7560", fontSize:"13px", lineHeight:2.2, fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>
+              <div style={{ color:"#b8a48a", fontSize:"15px", lineHeight:2.1, fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>
                 {page.content}
               </div>
             )}
 
             {page.kingdoms && (
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"14px" }}>
                 {page.kingdoms.map(k => (
-                  <div key={k.name} style={{ padding:"14px", border:`1px solid ${k.color}20`, borderRadius:"3px", background:"#02010a" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"8px" }}>
-                      <span style={{ color:k.color, fontSize:"14px" }}>{k.icon}</span>
-                      <span style={{ fontFamily:"'Cinzel',serif", color:k.color, fontSize:"11px", fontWeight:700 }}>{k.name}</span>
+                  <div key={k.name} style={{ padding:"22px", border:`1px solid ${k.color}35`, borderRadius:"3px", background:"#02010a" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"12px" }}>
+                      <span style={{ color:k.color, fontSize:"20px" }}>{k.icon}</span>
+                      <span style={{ fontFamily:"'Cinzel',serif", color:k.color, fontSize:"16px", fontWeight:700, letterSpacing:"0.5px" }}>{k.name}</span>
                     </div>
-                    <div style={{ color:"#5a4a34", fontSize:"10px", lineHeight:1.8, fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>{k.desc}</div>
+                    <div style={{ color:"#c4a97a", fontSize:"14px", lineHeight:2, fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>{k.desc}</div>
                   </div>
                 ))}
               </div>
@@ -1815,7 +1932,7 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
             <button
               onClick={() => setLorePage(p => Math.max(0, p-1))}
               disabled={lorePage === 0}
-              style={{ background:"none", border:"1px solid #1a1005", color:"#3d2e1a", fontSize:"10px", padding:"10px 20px", cursor:"pointer", borderRadius:"2px", letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace", opacity: lorePage===0?0.3:1 }}
+              style={{ background:"none", border:"1px solid #2a1a08", color:"#6b4c1e", fontSize:"11px", padding:"12px 24px", cursor:"pointer", borderRadius:"2px", letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace", opacity: lorePage===0?0.3:1 }}
             >← PREV</button>
 
             {isLast ? (
@@ -1826,8 +1943,8 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
           </div>
 
           {/* Skip link */}
-          <div style={{ marginTop:"16px" }}>
-            <button onClick={() => setScreen("intro")} style={{ background:"none", border:"none", color:"#1a1005", fontSize:"9px", cursor:"pointer", letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace" }}>
+          <div style={{ marginTop:"18px", paddingBottom:"80px" }}>
+            <button onClick={() => setScreen("intro")} style={{ background:"none", border:"none", color:"#2d2316", fontSize:"10px", cursor:"pointer", letterSpacing:"2px", fontFamily:"'Share Tech Mono',monospace" }}>
               SKIP INTRODUCTION
             </button>
           </div>
@@ -1839,9 +1956,10 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
   // ─── INTRO SCREEN ──────────────────────────────────────────────────────────
 
   if (screen === "intro") return (
-    <div className="crt" style={{ minHeight:"100vh", background:"#010000", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Share Tech Mono',monospace", padding:"24px", animation:"flicker 15s infinite", overflowY:"auto" }}>
+    <div className="crt" style={{ minHeight:"100vh", background:"#010000", display:"flex", alignItems:"flex-start", justifyContent:"center", fontFamily:"'Share Tech Mono',monospace", padding:"40px 24px", animation:"flicker 15s infinite" }}>
       <style>{css}</style>
       <div className="scanline"/>
+      <IntroPlayer />
       <div style={{ maxWidth:"640px", width:"100%", textAlign:"center" }}>
 
         <div style={{ fontSize:"9px", color:"#1a1005", letterSpacing:"6px", marginBottom:"32px" }}>THE THORNBOUND CHRONICLES — RESTRICTED ARCHIVE</div>
@@ -1962,7 +2080,7 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
   // ─── ORIGIN SCREEN ─────────────────────────────────────────────────────────
 
   if (screen === "origin") return (
-    <div className="crt" style={{ minHeight:"100vh", background:"#010000", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Share Tech Mono',monospace", padding:"24px" }}>
+    <div className="crt" style={{ minHeight:"100vh", background:"#010000", display:"flex", alignItems:"flex-start", justifyContent:"center", fontFamily:"'Share Tech Mono',monospace", padding:"40px 24px" }}>
       <style>{css}</style>
       <div className="scanline"/>
       <div style={{ maxWidth:"680px", width:"100%", textAlign:"center" }}>
