@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thornbound — Player's Guide</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=IM+Fell+English:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold:    #c4892a;
+      --gold-dim: #8b5c1a;
+      --gold-dark: #3d2e1a;
+      --bg:      #010000;
+      --surface: #03010a;
+      --surface2: #02010a;
+      --border:  #2a1a08;
+      --border-dim: #1a1005;
+      --text:    #c4a97a;
+      --text-dim: #8a7560;
+      --text-mute: #5a4a34;
+      --text-faint: #3d2e1a;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      overflow-x: hidden;
+      line-height: 1.7;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar-thumb { background: #2a1a08; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+    /* ── SIDEBAR NAV ── */
+    .sidebar {
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      width: 220px;
+      background: #02000a;
+      border-right: 1px solid var(--border-dim);
+      display: flex;
+      flex-direction: column;
+      padding: 32px 0 24px;
+      z-index: 100;
+      overflow-y: auto;
+    }
+
+    .sidebar-logo {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: 2px;
+      text-align: center;
+      padding: 0 20px 28px;
+      border-bottom: 1px solid var(--border-dim);
+      margin-bottom: 24px;
+      text-shadow: 0 0 20px rgba(196,137,42,.4);
+    }
+
+    .sidebar-label {
+      font-size: 8px;
+      letter-spacing: 3px;
+      color: var(--text-faint);
+      padding: 0 20px 10px;
+    }
+
+    .nav-link {
+      display: block;
+      padding: 9px 20px;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--text-mute);
+      text-decoration: none;
+      transition: all .15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover {
+      color: var(--gold);
+      border-left-color: var(--gold-dim);
+      background: rgba(196,137,42,.04);
+    }
+    .nav-link.active {
+      color: var(--gold);
+      border-left-color: var(--gold);
+    }
+
+    .nav-section { margin-bottom: 8px; }
+    .nav-divider { height: 1px; background: var(--border-dim); margin: 16px 20px; }
+
+    /* ── MAIN CONTENT ── */
+    .main {
+      margin-left: 220px;
+      padding: 60px 48px 100px;
+      max-width: 860px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 60px 0 70px;
+      border-bottom: 1px solid var(--border-dim);
+      margin-bottom: 70px;
+    }
+    .hero-eyebrow {
+      font-size: 9px;
+      letter-spacing: 6px;
+      color: var(--text-faint);
+      margin-bottom: 20px;
+    }
+    .hero-title {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: clamp(40px, 7vw, 80px);
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+      text-shadow: 0 0 60px rgba(196,137,42,.4), 0 0 120px rgba(139,92,26,.15);
+      margin-bottom: 10px;
+    }
+    .hero-sub {
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      letter-spacing: 5px;
+      color: var(--text-mute);
+      margin-bottom: 32px;
+    }
+    .hero-desc {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: 16px;
+      color: var(--text-dim);
+      max-width: 560px;
+      margin: 0 auto;
+      line-height: 2;
+    }
+
+    /* ── SECTIONS ── */
+    .section {
+      margin-bottom: 72px;
+      scroll-margin-top: 40px;
+    }
+
+    .section-eyebrow {
+      font-size: 8px;
+      letter-spacing: 4px;
+      color: var(--gold-dim);
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: #d4a94a;
+      letter-spacing: 1px;
+      margin: 28px 0 12px;
+    }
+
+    p {
+      font-family: 'IM Fell English', serif;
+      font-size: 15px;
+      line-height: 2.1;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    /* ── CALLOUT BOXES ── */
+    .callout {
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 20px 24px;
+      background: var(--surface);
+      margin: 24px 0;
+    }
+    .callout-title {
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: var(--gold-dim);
+      margin-bottom: 10px;
+    }
+    .callout p { margin-bottom: 0; font-size: 14px; }
+
+    .callout.warn {
+      border-color: #4a1a08;
+      background: #05010a;
+    }
+    .callout.warn .callout-title { color: #c0502a; }
+
+    .callout.tip {
+      border-color: #0a2a08;
+      background: #010a02;
+    }
+    .callout.tip .callout-title { color: #4ade80; }
+
+    /* ── CARDS GRID ── */
+    .card-grid {
+      display: grid;
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .card-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+    .card {
+      border-radius: 3px;
+      padding: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border-dim);
+      transition: border-color .2s;
+    }
+    .card:hover { border-color: var(--border); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .card-icon { font-size: 20px; }
+    .card-name {
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .card p { font-size: 13px; margin-bottom: 0; color: var(--text-dim); line-height: 1.9; }
+
+    /* ── STAT ROWS ── */
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-dim);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-icon { font-size: 18px; width: 28px; text-align: center; }
+    .stat-name {
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      width: 100px;
+      flex-shrink: 0;
+    }
+    .stat-desc {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.8;
+      flex: 1;
+    }
+
+    /* ── ERA TIMELINE ── */
+    .era-timeline { margin: 24px 0; }
+    .era-item {
+      display: flex;
+      gap: 20px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border-dim);
+      position: relative;
+    }
+    .era-item:last-child { border-bottom: none; }
+    .era-num {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 1px;
+      width: 80px;
+      flex-shrink: 0;
+      padding-top: 3px;
+    }
+    .era-body {}
+    .era-name {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .era-turns {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--text-mute);
+      margin-bottom: 8px;
+    }
+    .era-desc {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.9;
+    }
+
+    /* ── ENDINGS TABLE ── */
+    .endings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .ending-card {
+      border-radius: 3px;
+      padding: 18px 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border-dim);
+    }
+    .ending-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .ending-icon { font-size: 20px; }
+    .ending-title {
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .ending-desc {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.85;
+    }
+
+    /* ── NPC CARDS ── */
+    .npc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .npc-card {
+      border-radius: 3px;
+      padding: 18px 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border-dim);
+    }
+    .npc-name-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .npc-icon { font-size: 16px; }
+    .npc-name {
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .npc-role {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--text-mute);
+      margin-bottom: 10px;
+    }
+    .npc-desc {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.85;
+    }
+
+    /* ── TIPS LIST ── */
+    .tip-list { list-style: none; margin: 16px 0; }
+    .tip-list li {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-dim);
+      font-family: 'IM Fell English', serif;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.85;
+    }
+    .tip-list li:last-child { border-bottom: none; }
+    .tip-list li::before {
+      content: "◆";
+      color: var(--gold-dim);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ── KINGDOM COLORS ── */
+    .ironmere  { color: #60a5fa; }
+    .vael      { color: #34d399; }
+    .caldrath  { color: #a78bfa; }
+    .duskfen   { color: #f59e0b; }
+    .ashkeep   { color: #f87171; }
+
+    /* ── INLINE TAG ── */
+    .tag {
+      display: inline-block;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      padding: 2px 8px;
+      border-radius: 2px;
+      border: 1px solid currentColor;
+      opacity: .7;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* ── KEYBOARD ── */
+    kbd {
+      display: inline-block;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      padding: 2px 8px;
+      background: #0a0600;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--gold-dim);
+    }
+
+    /* ── FOOTER ── */
+    .guide-footer {
+      margin-top: 80px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border-dim);
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--text-faint);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 40px 24px 80px; }
+      .card-grid.cols-2, .card-grid.cols-3,
+      .endings-grid, .npc-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .hero-title { font-size: 36px; }
+      .main { padding: 24px 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar">
+  <div class="sidebar-logo">THORN<br/>BOUND</div>
+
+  <div class="sidebar-label">THE GUIDE</div>
+
+  <div class="nav-section">
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#getting-started">Getting Started</a>
+    <a class="nav-link" href="#how-to-play">How to Play</a>
+  </div>
+
+  <div class="nav-divider"></div>
+  <div class="sidebar-label">THE WORLD</div>
+
+  <div class="nav-section">
+    <a class="nav-link" href="#kingdoms">Five Kingdoms</a>
+    <a class="nav-link" href="#eras">The Four Eras</a>
+    <a class="nav-link" href="#npcs">Key Characters</a>
+  </div>
+
+  <div class="nav-divider"></div>
+  <div class="sidebar-label">YOUR CHARACTER</div>
+
+  <div class="nav-section">
+    <a class="nav-link" href="#origins">Origins</a>
+    <a class="nav-link" href="#stats">Stats Explained</a>
+    <a class="nav-link" href="#inventory">Inventory</a>
+  </div>
+
+  <div class="nav-divider"></div>
+  <div class="sidebar-label">ENDGAME</div>
+
+  <div class="nav-section">
+    <a class="nav-link" href="#pivot-turns">Pivot Turns</a>
+    <a class="nav-link" href="#endings">Six Fates</a>
+    <a class="nav-link" href="#legacy">Legacy System</a>
+  </div>
+
+  <div class="nav-divider"></div>
+  <div class="sidebar-label">REFERENCE</div>
+
+  <div class="nav-section">
+    <a class="nav-link" href="#oracle">The Oracle</a>
+    <a class="nav-link" href="#music">Music</a>
+    <a class="nav-link" href="#tips">Tips & Strategy</a>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">PLAYER'S FIELD GUIDE — RESTRICTED ARCHIVE</div>
+    <div class="hero-title">THORNBOUND</div>
+    <div class="hero-sub">A DARK FANTASY CHRONICLE</div>
+    <div class="hero-desc">
+      Five kingdoms. One fragile peace. Six ways it ends.<br/>
+      Everything you need to survive — and who to become.
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- OVERVIEW -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="overview">
+    <div class="section-eyebrow">▸ SECTION 01</div>
+    <h2>What Is Thornbound?</h2>
+    <p>Thornbound is an AI-powered dark fantasy text RPG. You play a character navigating the brutal politics of the Five Kingdoms — a world held together by the Thornbound Pact, a fragile peace treaty that is quietly unraveling.</p>
+    <p>Every turn, an AI narrator describes your situation in literary second-person prose and presents four choices. Your decisions shape your stats, your relationships, your reputation — and ultimately which of six possible fates you earn.</p>
+    <p>There is no correct path. There is only what you choose and what that costs.</p>
+
+    <div class="callout">
+      <div class="callout-title">▸ CORE LOOP</div>
+      <p>Read the scene → Choose your action (or write your own) → Watch the consequences unfold → Repeat. Each choice echoes forward. The realm remembers.</p>
+    </div>
+
+    <div class="card-grid cols-3" style="margin-top:24px;">
+      <div class="card" style="text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold);margin-bottom:8px;">∞</div>
+        <div style="font-size:9px;letter-spacing:2px;color:var(--text-mute);">NO TURN LIMIT</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold);margin-bottom:8px;">6</div>
+        <div style="font-size:9px;letter-spacing:2px;color:var(--text-mute);">POSSIBLE ENDINGS</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:28px;color:var(--gold);margin-bottom:8px;">4</div>
+        <div style="font-size:9px;letter-spacing:2px;color:var(--text-mute);">PLAYABLE ORIGINS</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- GETTING STARTED -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="getting-started">
+    <div class="section-eyebrow">▸ SECTION 02</div>
+    <h2>Getting Started</h2>
+
+    <h3>API Key</h3>
+    <p>Thornbound uses OpenRouter to power its AI narrator. Before you can play, you need a free OpenRouter API key. Enter it on the main screen — it is saved locally to your browser and never sent anywhere except OpenRouter's servers.</p>
+
+    <div class="callout tip">
+      <div class="callout-title">▸ GET YOUR KEY</div>
+      <p>Visit <strong style="color:#4ade80;">openrouter.ai</strong> → sign up → navigate to Keys → create a new key. Paste it into the "OPENROUTER API KEY REQUIRED" field and hit SAVE.</p>
+    </div>
+
+    <h3>The Lore Introduction</h3>
+    <p>When you first launch Thornbound, you are taken through five lore pages introducing the world, the kingdoms, the key players, and the Honor & Darkness system. You can click through these at your own pace, or hit <strong>SKIP INTRODUCTION</strong> to go straight to the main screen.</p>
+
+    <h3>Choosing Your Origin</h3>
+    <p>From the main screen, click <strong style="color:var(--gold);">CHOOSE YOUR BLOOD</strong> to select your origin. Each origin gives you a different starting stat profile, inventory, and opening situation. See the <a href="#origins" style="color:var(--gold-dim);">Origins section</a> for a full breakdown.</p>
+
+    <h3>Continuing a Save</h3>
+    <p>Thornbound auto-saves your run to your browser's localStorage after every turn. If you have an existing run, a save card will appear on the main screen showing your origin, current turn, era, and stats. Click <strong>CONTINUE</strong> to pick up exactly where you left off, or <strong>ABANDON RUN</strong> to start fresh.</p>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠ IMPORTANT</div>
+      <p>Saves are stored in your browser's localStorage. Clearing browser data, using a different browser, or switching devices will lose your save. The game does not have cloud sync.</p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- HOW TO PLAY -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="how-to-play">
+    <div class="section-eyebrow">▸ SECTION 03</div>
+    <h2>How to Play</h2>
+
+    <h3>Reading the Scene</h3>
+    <p>Each turn opens with a passage of narrative prose — written in second-person present tense. Pay attention. The narrator embeds clues about NPC motives, political shifts, and incoming threats. Nothing is decoration.</p>
+
+    <h3>Making a Choice</h3>
+    <p>Below each scene are four lettered choices. These are not tone variants — they represent genuinely different strategic directions. One might build trust with an ally. Another might gain power at a moral cost. A third might be a calculated risk. Always read all four before deciding.</p>
+
+    <h3>Custom Actions</h3>
+    <p>You are not limited to the four preset choices. The text field at the bottom — <em>"Or write your own action..."</em> — lets you do anything. Type exactly what you want your character to do and press <kbd>Enter</kbd> or click <strong>ACT</strong>. The AI narrator will respond as if it were a legitimate choice, with full stat and NPC consequences.</p>
+
+    <div class="callout tip">
+      <div class="callout-title">▸ PRO TIP</div>
+      <p>Custom actions are powerful. You can attempt to forge documents, gather intelligence before acting, attempt to flee a scene, or do something the preset choices don't offer. The narrator honors your intent — but also the consequences.</p>
+    </div>
+
+    <h3>The Game Panels</h3>
+    <p>During play, several panels are available via the top toolbar:</p>
+
+    <div class="card-grid cols-2" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">◈</span>
+          <span class="card-name" style="color:var(--gold);">Stats Panel</span>
+        </div>
+        <p>Shows all six stats with current values and bar graphs. Tracks how you are changing over time.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">◆</span>
+          <span class="card-name" style="color:var(--gold);">Inventory</span>
+        </div>
+        <p>Lists every item you currently carry. Items can be gained or lost through choices and events.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">⚖</span>
+          <span class="card-name" style="color:var(--gold);">NPCs</span>
+        </div>
+        <p>Shows the trust level (0–100) and status of all six key characters. Tracks the last time each was encountered.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">◈</span>
+          <span class="card-name" style="color:var(--gold);">Realm Map</span>
+        </div>
+        <p>A zoomable, pannable map of the Five Kingdoms with your current location pinned. Hover kingdoms for details.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">☽</span>
+          <span class="card-name" style="color:var(--gold);">Chronicle</span>
+        </div>
+        <p>A full log of your choices and pivot moments — your personal history of the run so far.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">⬡</span>
+          <span class="card-name" style="color:#9333ea;">The Oracle</span>
+        </div>
+        <p>Ask any question about the world, a character, or your situation. The Oracle answers in character. See <a href="#oracle" style="color:var(--gold-dim);">The Oracle section</a>.</p>
+      </div>
+    </div>
+
+    <h3>The Footer Stats Bar</h3>
+    <p>At the very bottom of the game screen, a compact bar always shows your six stats at a glance alongside your current era name. This is always visible without opening any panel.</p>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- FIVE KINGDOMS -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="kingdoms">
+    <div class="section-eyebrow">▸ SECTION 04</div>
+    <h2>The Five Kingdoms</h2>
+    <p>Twenty years ago, the War of Ash ended when five kings signed the Thornbound Pact. Each kingdom holds a secret capable of destroying the others — mutual assured destruction dressed up as diplomacy. The pact holds because the thorns draw blood on both sides.</p>
+
+    <div class="card-grid cols-2" style="margin-top:24px;">
+
+      <div class="card" style="border-color:#60a5fa30;">
+        <div class="card-header">
+          <span class="card-icon ironmere">⚔</span>
+          <span class="card-name ironmere">Ironmere</span>
+        </div>
+        <p>Militarist and disciplined, Ironmere rules the frozen north from its capital <strong>Varenhold</strong>. Its lords have never truly sheathed their swords since the Pact — they merely point them at different targets. Cold iron and colder politics. Honor means something here, but power means more.</p>
+      </div>
+
+      <div class="card" style="border-color:#34d39930;">
+        <div class="card-header">
+          <span class="card-icon vael">◆</span>
+          <span class="card-name vael">Vael</span>
+        </div>
+        <p>Maritime merchant-princes rule from <strong>Silvenmoor</strong>. Vael is beautiful and poisonous. Every treaty is a contract. Every contract has hidden clauses. Vael smiles while counting your weaknesses. If you deal with Vael, know what you are actually trading.</p>
+      </div>
+
+      <div class="card" style="border-color:#a78bfa30;">
+        <div class="card-header">
+          <span class="card-icon caldrath">★</span>
+          <span class="card-name caldrath">Caldrath</span>
+        </div>
+        <p>The oldest kingdom. Ancient magic seeps through crumbling halls in <strong>Dur Crossing</strong>. Caldrath remembers the world before the Pact and has never forgiven the forgetting. Grandeur in slow decay. Old blood, old pride, old grudges — and old power that most kingdoms no longer believe is real.</p>
+      </div>
+
+      <div class="card" style="border-color:#f59e0b30;">
+        <div class="card-header">
+          <span class="card-icon duskfen">◌</span>
+          <span class="card-name duskfen">Duskfen</span>
+        </div>
+        <p>Swamp lords who deal in silence and secrets, based in <strong>Mirehold</strong>. Nobody knows what Duskfen does in the dark — and that is precisely how they want it. Assassins, heretics, and survivors. If information is currency, Duskfen is the richest kingdom in the Five.</p>
+      </div>
+
+      <div class="card" style="border-color:#f8717130; grid-column: 1 / -1;">
+        <div class="card-header">
+          <span class="card-icon ashkeep">✦</span>
+          <span class="card-name ashkeep">Ashkeep</span>
+        </div>
+        <p>Desert warriors of the Ember Faith rule from <strong>Ashgate</strong>. Holy war is always three days away. Ashkeep believes the Thornbound Pact is an affront to their god — a piece of paper standing between the faithful and divine mandate. When they finally move, it will not be subtle. Their conviction is their greatest strength and their greatest danger.</p>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- THE FOUR ERAS -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="eras">
+    <div class="section-eyebrow">▸ SECTION 05</div>
+    <h2>The Four Eras</h2>
+    <p>Your chronicle is divided into four eras, each covering a span of turns. The era defines the political atmosphere, the tone of the narration, and what kinds of events are possible. As eras shift, the world escalates — alliances that formed in Era 1 will be tested in Era 2 and shattered in Era 3.</p>
+
+    <div class="era-timeline">
+
+      <div class="era-item">
+        <div class="era-num" style="color:#60a5fa;">ERA I</div>
+        <div class="era-body">
+          <div class="era-name" style="color:#60a5fa;">Gathering Storm</div>
+          <div class="era-turns">TURNS 1–20 · "Alliances form. Knives are sharpened."</div>
+          <div class="era-desc">The early game. Political maneuvering, first impressions, and careful positioning. You are a newcomer gaining a foothold. The Pact still holds on the surface. This is when you establish who you are going to be — because the choices you make here define what options you have later. Do not underestimate Turn 1.</div>
+        </div>
+      </div>
+
+      <div class="era-item">
+        <div class="era-num" style="color:#f59e0b;">ERA II</div>
+        <div class="era-body">
+          <div class="era-name" style="color:#f59e0b;">The Great Betrayal</div>
+          <div class="era-turns">TURNS 21–40 · "Someone you trusted will fall."</div>
+          <div class="era-desc">Mid-game escalation. Someone in your circle will betray you — or you will betray them. The Pact begins to visibly fracture. The NPCs you built trust with in Era 1 now face real tests. High-trust relationships become your armor. Low-trust relationships become knives aimed at your back.</div>
+        </div>
+      </div>
+
+      <div class="era-item">
+        <div class="era-num" style="color:#f87171;">ERA III</div>
+        <div class="era-body">
+          <div class="era-name" style="color:#f87171;">War of Five Thorns</div>
+          <div class="era-turns">TURNS 41–65 · "The realm burns. Choose a side."</div>
+          <div class="era-desc">Full war. Kingdom armies clash. The consequences of every choice from Eras 1 and 2 now manifest as military and political reality. If you built influence with Ironmere, their armies may answer your call. If you burned those bridges, you are alone in the fire. This era is not forgiving of poor preparation.</div>
+        </div>
+      </div>
+
+      <div class="era-item">
+        <div class="era-num" style="color:#a855f7;">ERA IV</div>
+        <div class="era-body">
+          <div class="era-name" style="color:#a855f7;">The Reckoning</div>
+          <div class="era-turns">TURNS 66–90 · "It ends here. One way or another."</div>
+          <div class="era-desc">The final act. Everything converges. Your entire arc — every alliance, betrayal, stat, and pivot choice — bears down on you at once. The narrator will push toward an ending appropriate to who you have become. Endings are not random; they are earned. This is where your chronicle closes.</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- KEY CHARACTERS -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="npcs">
+    <div class="section-eyebrow">▸ SECTION 06</div>
+    <h2>Key Characters</h2>
+    <p>Six recurring NPCs form the human architecture of your chronicle. Each has a trust score (0–100), a status (alive / hostile / dead / unknown), and a memory of every interaction you have had. Trust starts at 50 — neutral. It rises when you act in their interest, falls when you betray or ignore them.</p>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠ PERMANENCE</div>
+      <p>NPCs can die permanently. Once dead, they are gone for the rest of your run. Their death ripples forward — an ally lost, an enemy removed, a door closed forever. Think carefully before making choices that put them in danger.</p>
+    </div>
+
+    <div class="npc-grid">
+
+      <div class="npc-card">
+        <div class="npc-name-row">
+          <span class="npc-icon">⚖</span>
+          <span class="npc-name">Lord Aldric Vane</span>
+        </div>
+        <div class="npc-role">LORD OF IRONMERE · IRONMERE</div>
+        <div class="npc-desc">The last man playing by the old rules. Honorable to a fault — which in this world makes him either the most trustworthy ally or the most predictable target. He will respect you if you are honest. He will not forgive you if you are not.</div>
+      </div>
+
+      <div class="npc-card">
+        <div class="npc-name-row">
+          <span class="npc-icon">◆</span>
+          <span class="npc-name">Mira Ashfen</span>
+        </div>
+        <div class="npc-role">SPYMASTER OF VAEL · VAEL</div>
+        <div class="npc-desc">Brilliant. Loyal to nothing. She knows everything you have done — and several things you have not done yet. Gaining Mira's trust does not mean gaining her loyalty; it means becoming useful to her. Which is almost the same thing. Almost.</div>
+      </div>
+
+      <div class="npc-card">
+        <div class="npc-name-row">
+          <span class="npc-icon">★</span>
+          <span class="npc-name">Prince Cael Caldrath</span>
+        </div>
+        <div class="npc-role">PRINCE OF CALDRATH · CALDRATH</div>
+        <div class="npc-desc">Young, idealistic, and walking toward his own destruction with a smile. He can be saved — but only if someone intervenes at the right moment with the right intent. Protecting Cael costs you. Abandoning him costs you differently.</div>
+      </div>
+
+      <div class="npc-card">
+        <div class="npc-name-row">
+          <span class="npc-icon">✦</span>
+          <span class="npc-name">Sister Voss</span>
+        </div>
+        <div class="npc-role">EMBER FAITH INQUISITOR · ASHKEEP</div>
+        <div class="npc-desc">She believes she is saving souls. She is burning them. Her conviction is total and genuinely terrifying because she is not wrong about the faith — only about what the faith demands. An enemy who believes she is righteous is the most dangerous kind.</div>
+      </div>
+
+      <div class="npc-card">
+        <div class="npc-name-row">
+          <span class="npc-icon">⚔</span>
+          <span class="npc-name">Ser Hadron</span>
+        </div>
+        <div class="npc-role">DISGRACED KNIGHT · NO KINGDOM</div>
+        <div class="npc-desc">Seeking a cause worth dying for. He will follow those who earn it — not through words but through demonstrated conviction. Earn Ser Hadron and you gain a warrior who will not break. Fail to earn him and he simply leaves. He does not betray; he disappears.</div>
+      </div>
+
+      <div class="npc-card">
+        <div class="npc-name-row">
+          <span class="npc-icon">⬡</span>
+          <span class="npc-name">The Thornweaver</span>
+        </div>
+        <div class="npc-role">UNKNOWN · UNKNOWN</div>
+        <div class="npc-desc">Appears exactly when it would be most inconvenient. Nobody knows whose side they are on — possibly not even them. The Thornweaver is not an ally, not an enemy, and not neutral. They are a variable. Treat them accordingly.</div>
+      </div>
+
+    </div>
+
+    <h3>Trust Thresholds</h3>
+    <div class="card-grid cols-3" style="margin-top:12px;">
+      <div class="card" style="text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:22px;color:#f87171;margin-bottom:6px;">0–25</div>
+        <div style="font-size:9px;letter-spacing:1px;color:var(--text-mute);">HOSTILE</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:8px;font-family:'IM Fell English',serif;font-style:italic;">Actively working against you</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:22px;color:var(--gold);margin-bottom:6px;">26–74</div>
+        <div style="font-size:9px;letter-spacing:1px;color:var(--text-mute);">NEUTRAL</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:8px;font-family:'IM Fell English',serif;font-style:italic;">Watching, measuring, waiting</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:22px;color:#4ade80;margin-bottom:6px;">75–100</div>
+        <div style="font-size:9px;letter-spacing:1px;color:var(--text-mute);">TRUSTED</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:8px;font-family:'IM Fell English',serif;font-style:italic;">Reliable when stakes are real</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- ORIGINS -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="origins">
+    <div class="section-eyebrow">▸ SECTION 07</div>
+    <h2>Origins</h2>
+    <p>Your origin is who you were before the chronicle begins. It sets your starting stats, your opening inventory, and the political situation you are dropped into on Turn 1. Choose based on your preferred playstyle — combat, politics, deception, or restoration.</p>
+
+    <div class="card-grid cols-2" style="margin-top:20px;">
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon" style="color:var(--gold);">⚔</span>
+          <span class="card-name" style="color:var(--gold);">Bastard Knight</span>
+        </div>
+        <p style="margin-bottom:14px;">Born of a lord's indiscretion, raised in the yard. You know how to fight. You do not know who to trust.</p>
+        <div style="font-size:10px;letter-spacing:1px;color:var(--text-mute);margin-bottom:8px;">STARTING STATS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;">
+          <div style="color:#4ade80;">♥ VIT 90</div>
+          <div style="color:#f87171;">⚔ STR 75</div>
+          <div style="color:#f59e0b;">★ INF 25</div>
+          <div style="color:#60a5fa;">⬡ WIS 35</div>
+          <div style="color:#a78bfa;">◈ HON 65</div>
+          <div style="color:#9333ea;">☽ DRK 5</div>
+        </div>
+        <div style="margin-top:14px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">STARTING INVENTORY</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;font-family:'IM Fell English',serif;font-style:italic;line-height:1.8;">Worn Longsword · Dented Pauldron · Letter of Legitimacy (Disputed)</div>
+        <div style="margin-top:14px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">BEST FOR</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;">Players who want direct combat power and a straightforward arc of proving their worth.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon" style="color:#60a5fa;">⬡</span>
+          <span class="card-name" style="color:#60a5fa;">Court Scholar</span>
+        </div>
+        <p style="margin-bottom:14px;">Raised among books and whispered politics. You know secrets. You know how to survive rooms where others die.</p>
+        <div style="font-size:10px;letter-spacing:1px;color:var(--text-mute);margin-bottom:8px;">STARTING STATS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;">
+          <div style="color:#4ade80;">♥ VIT 60</div>
+          <div style="color:#f87171;">⚔ STR 25</div>
+          <div style="color:#f59e0b;">★ INF 55</div>
+          <div style="color:#60a5fa;">⬡ WIS 80</div>
+          <div style="color:#a78bfa;">◈ HON 50</div>
+          <div style="color:#9333ea;">☽ DRK 10</div>
+        </div>
+        <div style="margin-top:14px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">STARTING INVENTORY</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;font-family:'IM Fell English',serif;font-style:italic;line-height:1.8;">Cipher Journal · Royal Academy Seal · Vial of Truth-Ink</div>
+        <div style="margin-top:14px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">BEST FOR</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;">Players who want to manipulate politics from the shadows and accumulate information as their primary weapon.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon" style="color:#34d399;">◆</span>
+          <span class="card-name" style="color:#34d399;">Sellsword</span>
+        </div>
+        <p style="margin-bottom:14px;">No house. No banner. No loyalty that gold can't buy — until one day, it couldn't. You have a debt and a sword.</p>
+        <div style="font-size:10px;letter-spacing:1px;color:var(--text-mute);margin-bottom:8px;">STARTING STATS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;">
+          <div style="color:#4ade80;">♥ VIT 85</div>
+          <div style="color:#f87171;">⚔ STR 80</div>
+          <div style="color:#f59e0b;">★ INF 20</div>
+          <div style="color:#60a5fa;">⬡ WIS 40</div>
+          <div style="color:#a78bfa;">◈ HON 30</div>
+          <div style="color:#9333ea;">☽ DRK 20</div>
+        </div>
+        <div style="margin-top:14px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">STARTING INVENTORY</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;font-family:'IM Fell English',serif;font-style:italic;line-height:1.8;">Mercenary Contract (Void) · Throwing Knives ×3 · Ironmere Bounty Notice</div>
+        <div style="margin-top:14px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">BEST FOR</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;">Players who enjoy a morally flexible, high-combat opening with a built-in enemy and a dangerous backstory.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon" style="color:#a78bfa;">★</span>
+          <span class="card-name" style="color:#a78bfa;">Fallen Noble</span>
+        </div>
+        <p style="margin-bottom:14px;">Your house was erased. Your name is a curse in the halls you were born to inherit. You remember everything.</p>
+        <div style="font-size:10px;letter-spacing:1px;color:var(--text-mute);margin-bottom:8px;">STARTING STATS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;">
+          <div style="color:#4ade80;">♥ VIT 70</div>
+          <div style="color:#f87171;">⚔ STR 45</div>
+          <div style="color:#f59e0b;">★ INF 60</div>
+          <div style="color:#60a5fa;">⬡ WIS 60</div>
+          <div style="color:#a78bfa;">◈ HON 55</div>
+          <div style="color:#9333ea;">☽ DRK 15</div>
+        </div>
+        <div style="margin-top:14px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">STARTING INVENTORY</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;font-family:'IM Fell English',serif;font-style:italic;line-height:1.8;">Broken House Sigil · Hidden Ledger (Blackmail) · Fine Cloak (Threadbare)</div>
+        <div style="margin-top:14px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">BEST FOR</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;">Players who want a revenge-driven narrative with strong political tools and a personal vendetta already in motion.</div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- STATS -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="stats">
+    <div class="section-eyebrow">▸ SECTION 08</div>
+    <h2>Stats Explained</h2>
+    <p>Six stats define your character. They are not just numbers — they actively change how the narrator describes your situation, how NPCs speak to you, and which endings become accessible. Stats range from 0 to 100 and shift with every meaningful choice.</p>
+
+    <div style="border:1px solid var(--border);border-radius:3px;background:var(--surface);margin:24px 0;overflow:hidden;">
+
+      <div class="stat-row" style="padding:16px 20px;">
+        <div class="stat-icon" style="color:#4ade80;">♥</div>
+        <div class="stat-name" style="color:#4ade80;">VITALITY</div>
+        <div class="stat-desc">Your physical condition and survival capacity. Hits zero and the game ends with a death ending. At 15 or below, the narrator treats every scene as potentially fatal.</div>
+      </div>
+
+      <div class="stat-row" style="padding:16px 20px;">
+        <div class="stat-icon" style="color:#f87171;">⚔</div>
+        <div class="stat-name" style="color:#f87171;">STRENGTH</div>
+        <div class="stat-desc">Physical power and martial skill. High Strength unlocks combat-focused options and makes you credible as a threat. Low Strength means physical confrontations are dangerous and enemies sense it.</div>
+      </div>
+
+      <div class="stat-row" style="padding:16px 20px;">
+        <div class="stat-icon" style="color:#f59e0b;">★</div>
+        <div class="stat-name" style="color:#f59e0b;">INFLUENCE</div>
+        <div class="stat-desc">Your political weight and social reach. High Influence means courts take you seriously and your words carry authority. The Shadow Hand and Thornbound King endings both require significant Influence.</div>
+      </div>
+
+      <div class="stat-row" style="padding:16px 20px;">
+        <div class="stat-icon" style="color:#60a5fa;">⬡</div>
+        <div class="stat-name" style="color:#60a5fa;">WISDOM</div>
+        <div class="stat-desc">Your capacity to read situations, anticipate consequences, and learn from events. High Wisdom often unlocks fourth options that other players do not see — choices that avoid the trap entirely.</div>
+      </div>
+
+      <div class="stat-row" style="padding:16px 20px;">
+        <div class="stat-icon" style="color:#a78bfa;">◈</div>
+        <div class="stat-name" style="color:#a78bfa;">HONOR</div>
+        <div class="stat-desc">Your moral standing. At 20 or below, NPCs speak to you differently — as something less than human. The narrator's tone shifts. Aldric Vane will not deal with you. Some doors close permanently. Honor is easier to lose than to restore.</div>
+      </div>
+
+      <div class="stat-row" style="padding:16px 20px;border-bottom:none;">
+        <div class="stat-icon" style="color:#9333ea;">☽</div>
+        <div class="stat-name" style="color:#9333ea;">DARKNESS</div>
+        <div class="stat-desc">How much of something else you are becoming. At 80 or above, the narration itself changes — you experience visions, moments of involuntary violence, and flashes of lost time. Darkness is not just a stat. It is a transformation in progress.</div>
+      </div>
+
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠ THE CORRUPTION THRESHOLD</div>
+      <p>When Darkness reaches 80, the narrator gains permission to describe things happening <em>to</em> you that you did not choose. Moments of violence you do not fully remember. This is intentional. You are no longer entirely in control.</p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- INVENTORY -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="inventory">
+    <div class="section-eyebrow">▸ SECTION 09</div>
+    <h2>Inventory</h2>
+    <p>Your inventory lists every item you currently carry. Items are gained and lost through choices and events — the narrator decides what makes sense narratively. You cannot manually drop items, but choices sometimes force you to spend or lose them.</p>
+    <p>Starting inventories vary by origin. Items acquired during the game can range from weapons and documents to political leverage and strange objects of unknown purpose. The narrator is aware of everything in your inventory and may reference it in scenes even if you do not explicitly use it.</p>
+
+    <div class="callout tip">
+      <div class="callout-title">▸ TIP</div>
+      <p>If you have a relevant item, mention it in a custom action. The narrator will account for it. "I present the Hidden Ledger" is a legitimate move and the AI will treat it as such.</p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- PIVOT TURNS -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="pivot-turns">
+    <div class="section-eyebrow">▸ SECTION 10</div>
+    <h2>Pivot Turns</h2>
+    <p>Certain turns are designated pivot turns — moments where the narrator is instructed to present a true moral dilemma with no clean answer. Both paths should cost something real. These are not the same as regular choices.</p>
+
+    <div class="card-grid cols-3" style="margin-top:16px;margin-bottom:24px;">
+      {["Turn 10","Turn 22","Turn 35","Turn 48","Turn 62","Turn 75","Turn 85"].map(t => `
+      <div class="card" style="text-align:center;padding:14px;">
+        <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);">${t}</div>
+      </div>`).join("")}
+    </div>
+
+    <div style="border:1px solid var(--border);border-radius:3px;background:var(--surface);padding:20px 24px;margin-top:16px;">
+      <div style="font-size:9px;letter-spacing:3px;color:var(--gold-dim);margin-bottom:8px;">▸ PIVOT TURNS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        <span style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);padding:6px 14px;border:1px solid var(--border);border-radius:2px;">Turn 10</span>
+        <span style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);padding:6px 14px;border:1px solid var(--border);border-radius:2px;">Turn 22</span>
+        <span style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);padding:6px 14px;border:1px solid var(--border);border-radius:2px;">Turn 35</span>
+        <span style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);padding:6px 14px;border:1px solid var(--border);border-radius:2px;">Turn 48</span>
+        <span style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);padding:6px 14px;border:1px solid var(--border);border-radius:2px;">Turn 62</span>
+        <span style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);padding:6px 14px;border:1px solid var(--border);border-radius:2px;">Turn 75</span>
+        <span style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);padding:6px 14px;border:1px solid var(--border);border-radius:2px;">Turn 85</span>
+      </div>
+    </div>
+
+    <p style="margin-top:20px;">When a pivot turn triggers, the game logs your choice with a short label — "Betrayed Lord Vane," "Chose the Pact over the Prince" — and adds it to your Chronicle. These labels are visible to the narrator for the rest of your run and directly influence which endings become possible.</p>
+
+    <div class="callout">
+      <div class="callout-title">▸ NOTE</div>
+      <p>You will not always know when a pivot turn is happening. The narrator marks it in the narration — not with a popup. Pay attention to scenes that feel heavier than usual.</p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SIX ENDINGS -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="endings">
+    <div class="section-eyebrow">▸ SECTION 11</div>
+    <h2>The Six Fates</h2>
+    <p>Six endings exist. Which one you receive is determined by the sum of your choices — your stats, your pivot decisions, your NPC relationships, and your origin. Endings are not randomly assigned. They are earned. The narrator will begin steering toward an appropriate ending as you enter Era IV.</p>
+
+    <div class="endings-grid">
+
+      <div class="ending-card" style="border-color:#f59e0b30;">
+        <div class="ending-header">
+          <span class="ending-icon" style="color:#f59e0b;">♛</span>
+          <span class="ending-title" style="color:#f59e0b;">The Thornbound King</span>
+        </div>
+        <div class="ending-desc">You united the five kingdoms under a single crown — yours. Men call it peace. You know what it cost. The Thornbound Pact holds because you hold it, by will and by blood. Long may you reign. Long may they fear you.</div>
+        <div style="margin-top:12px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">REQUIRES: High Influence · Strong NPC alliances · Honor intact</div>
+      </div>
+
+      <div class="ending-card" style="border-color:#9333ea30;">
+        <div class="ending-header">
+          <span class="ending-icon" style="color:#9333ea;">◆</span>
+          <span class="ending-title" style="color:#9333ea;">The Shadow Hand</span>
+        </div>
+        <div class="ending-desc">No crown. No throne. You are the voice behind every throne — the hand that moves kings without being seen. The realm thinks it governs itself. It doesn't. You do.</div>
+        <div style="margin-top:12px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">REQUIRES: High Wisdom · High Influence · Low visibility</div>
+      </div>
+
+      <div class="ending-card" style="border-color:#94a3b830;">
+        <div class="ending-header">
+          <span class="ending-icon" style="color:#94a3b8;">◌</span>
+          <span class="ending-title" style="color:#94a3b8;">The Exile</span>
+        </div>
+        <div class="ending-desc">You walked away. Some call it cowardice. You call it survival. Somewhere beyond the Five Kingdoms, you are no one — and no one is hunting you. Almost.</div>
+        <div style="margin-top:12px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">REQUIRES: Low ties · Survival-focused choices · Willingness to abandon</div>
+      </div>
+
+      <div class="ending-card" style="border-color:#f8717130;">
+        <div class="ending-header">
+          <span class="ending-icon" style="color:#f87171;">✦</span>
+          <span class="ending-title" style="color:#f87171;">The Martyr</span>
+        </div>
+        <div class="ending-desc">You didn't survive. But the war you started — the truth you bled for — outlasted you. Bards will argue whether it was worth it. You never got to weigh in.</div>
+        <div style="margin-top:12px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">REQUIRES: High Honor · Idealistic choices · Sacrifice at a pivot turn</div>
+      </div>
+
+      <div class="ending-card" style="border-color:#ef444430;">
+        <div class="ending-header">
+          <span class="ending-icon" style="color:#ef4444;">⚔</span>
+          <span class="ending-title" style="color:#ef4444;">The Iron Warlord</span>
+        </div>
+        <div class="ending-desc">You didn't unify the kingdoms. You conquered them. There is a difference, you tell yourself, though you are less certain each year. The realm kneels. For now.</div>
+        <div style="margin-top:12px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">REQUIRES: High Strength · Military dominance · Low Honor</div>
+      </div>
+
+      <div class="ending-card" style="border-color:#10b98130;">
+        <div class="ending-header">
+          <span class="ending-icon" style="color:#10b981;">⬡</span>
+          <span class="ending-title" style="color:#10b981;">The Great Deceiver</span>
+        </div>
+        <div class="ending-desc">You lied to everyone — kings, allies, enemies — and every lie was the right one. History will never know your real name. That's exactly how you planned it.</div>
+        <div style="margin-top:12px;font-size:9px;letter-spacing:1px;color:var(--text-mute);">REQUIRES: High Darkness · Consistent deception · Multiple betrayals</div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- LEGACY SYSTEM -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="legacy">
+    <div class="section-eyebrow">▸ SECTION 12</div>
+    <h2>The Legacy System</h2>
+    <p>When a run ends — whether through a game-over death or a completed ending — the run is recorded into your Legacy. Thornbound stores the last eight completed runs, tracking your origin, ending, turn count, and the pivot labels from your key choices.</p>
+    <p>On subsequent runs, the narrator is aware of your previous chronicles. It will reference them obliquely — a rumor about a knight who once passed through, a scar on the land, an NPC mentioning "that time when..." — without breaking immersion. The world remembers your past lives.</p>
+
+    <div class="callout tip">
+      <div class="callout-title">▸ WHAT THIS MEANS</div>
+      <p>Replaying Thornbound is not just replaying the same game. Each run inhabits a world shaped by the ones before it. A realm where a previous you became The Martyr will have a different texture than one where a previous you became The Iron Warlord.</p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- THE ORACLE -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="oracle">
+    <div class="section-eyebrow">▸ SECTION 13</div>
+    <h2>The Oracle</h2>
+    <p>The Oracle is a separate AI channel available during gameplay. Access it by clicking the <strong style="color:#9333ea;">⬡</strong> button next to the ACT button. It opens a panel where you can ask any question — about the world, a character, your situation, or the lore — and receive an in-character answer.</p>
+    <p>The Oracle operates with full knowledge of your current state: your stats, your NPC relationships, the current era, and your choices so far. It speaks in the voice of the world, not as a game system.</p>
+
+    <h3>What to Ask</h3>
+    <ul class="tip-list">
+      <li><strong>"Who is Mira Ashfen really loyal to?"</strong> — Get deeper lore on NPCs beyond their surface description.</li>
+      <li><strong>"What does Ironmere want from this situation?"</strong> — Understand kingdom motivations before committing to a side.</li>
+      <li><strong>"What am I not seeing in this scene?"</strong> — The Oracle may hint at what the narrator did not spell out.</li>
+      <li><strong>"What happens if I let Prince Cael die?"</strong> — Ask hypotheticals before committing to a choice.</li>
+      <li><strong>"What does the Thornbound Pact actually say about succession?"</strong> — Deep lore questions are valid and answered seriously.</li>
+    </ul>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠ NOTE</div>
+      <p>The Oracle is a separate API call and uses additional tokens. Use it when you genuinely need information, not as a replacement for reading the narration carefully.</p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- MUSIC -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="music">
+    <div class="section-eyebrow">▸ SECTION 14</div>
+    <h2>Music</h2>
+    <p>Thornbound features a full dynamic music system. Different tracks play depending on your current era and the mood of the last scene. Mood-driven overrides take priority — a scene flagged as "danger" will trigger danger music regardless of which era you are in.</p>
+
+    <div class="card-grid cols-2" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-name" style="color:#60a5fa;">Lore Screen</span>
+        </div>
+        <p>"Folk Round" plays during the introduction lore pages — warm, measured, unhurried. The calm before.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-name" style="color:#9333ea;">Main Screen</span>
+        </div>
+        <p>"Ossuary 1 — Alone" plays on the character select screen. Hollow and ominous. Something is about to begin.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-name" style="color:#f59e0b;">In-Game</span>
+        </div>
+        <p>Tracks cycle through pools for each era and mood. Multiple tracks per slot mean you hear variety across a long run.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-name" style="color:#f87171;">Mood Overrides</span>
+        </div>
+        <p>Scenes marked danger, dread, war, grief, dark, triumphant, or intrigue override the era track with a thematically appropriate piece.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:20px;">The music player sits in the footer during gameplay. You can mute or adjust volume at any time. All music is by <strong style="color:var(--gold);">Kevin MacLeod</strong> (incompetech.com), licensed under CC BY 4.0.</p>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- TIPS -->
+  <!-- ══════════════════════════════════════════ -->
+  <section class="section" id="tips">
+    <div class="section-eyebrow">▸ SECTION 15</div>
+    <h2>Tips & Strategy</h2>
+
+    <h3>General</h3>
+    <ul class="tip-list">
+      <li>Read all four choices before picking. The fourth option is sometimes the most interesting one.</li>
+      <li>Use custom actions. The preset choices are a floor, not a ceiling. If you have a better idea, type it.</li>
+      <li>Watch the footer stat bar after each turn. Stat changes are your feedback signal. A sudden Honor drop means the narrator judged your choice more harshly than you expected.</li>
+      <li>The Oracle is free information — use it before pivot turns when you genuinely are not sure what a choice will cost.</li>
+      <li>Check the NPC panel regularly. Trust scores shift quietly. An ally at 34 is almost an enemy.</li>
+    </ul>
+
+    <h3>Stats</h3>
+    <ul class="tip-list">
+      <li>Vitality is your only hard limit. Keep it above 20 unless you are deliberately engineering a Martyr run.</li>
+      <li>Honor below 20 closes doors permanently. Certain NPC interactions and at least one ending require Honor above this threshold. Decide early whether you are playing an honorable character.</li>
+      <li>Darkness above 80 is interesting but uncontrollable. If you want the Great Deceiver ending, let it climb. If you want the Thornbound King, keep it low.</li>
+      <li>Influence is the single most broadly useful stat for late-game options. Even combat-focused players should not ignore it entirely.</li>
+    </ul>
+
+    <h3>NPCs</h3>
+    <ul class="tip-list">
+      <li>Do not let NPCs die accidentally. Once dead, they are removed from all future scenes and their potential contributions — military, intelligence, political — are gone.</li>
+      <li>High trust with Aldric Vane and Prince Cael is the clearest path to the Thornbound King ending. Low trust with both closes it.</li>
+      <li>Mira Ashfen is the most useful NPC for information and political leverage, but her trust is hard to hold. She notices everything.</li>
+      <li>Ser Hadron is an excellent late-game combat asset if you earn him in Era 1. He is very hard to recruit after Era 2 has begun.</li>
+      <li>The Thornweaver should never be fully trusted but never fully dismissed. Their appearances are rarely coincidental.</li>
+    </ul>
+
+    <h3>Long Runs</h3>
+    <ul class="tip-list">
+      <li>The game does not end at Turn 90 automatically — it continues until the narrator organically closes your arc. Runs can extend further if you avoid triggering an ending condition.</li>
+      <li>The Legacy system means your second and third runs are richer than your first. Do not treat your first run as the definitive experience.</li>
+      <li>Try different origins. The Fallen Noble and the Sellsword start in dramatically different political situations despite having similar stat totals.</li>
+    </ul>
+  </section>
+
+
+  <!-- FOOTER -->
+  <div class="guide-footer">
+    <div style="font-family:'Cinzel',serif;font-size:12px;color:var(--gold-dim);margin-bottom:8px;">THORNBOUND</div>
+    <div>THE REALM DOES NOT CARE WHO YOU ARE. ONLY WHAT YOU CHOOSE.</div>
+    <div style="margin-top:8px;color:#1a1005;">PLAYER'S FIELD GUIDE — v1.0</div>
+  </div>
+
+</main>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('.section');
+  const navLinks = document.querySelectorAll('.nav-link');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === '#' + entry.target.id) {
+            link.classList.add('active');
+          }
+        });
+      }
+    });
+  }, { threshold: 0.3, rootMargin: '-10% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
