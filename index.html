@@ -3054,15 +3054,24 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
             return (
             <button key={key} className={`origin-card ${selectedOrigin === key ? "selected" : ""}`} onClick={() => setSelectedOrigin(key)}>
               {/* Character art */}
-              <div style={{
-                width:"100%", aspectRatio:"1/1", marginBottom:"12px",
-                backgroundImage: CHAR_IMGS[key] ? `url("${CHAR_IMGS[key]}")` : "none",
-                backgroundSize:"cover",
-                backgroundPosition:"center top",
-                backgroundRepeat:"no-repeat",
-                borderRadius:"2px",
-                imageRendering:"pixelated",
-              }}/>
+              {CHAR_IMGS[key] ? (
+                <img
+                  src={CHAR_IMGS[key]}
+                  alt={o.name}
+                  style={{
+                    width:"100%", aspectRatio:"1/1", marginBottom:"12px",
+                    objectFit:"cover", objectPosition:"center top",
+                    borderRadius:"2px", display:"block",
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width:"100%", aspectRatio:"1/1", marginBottom:"12px",
+                  background:"#0a0600", borderRadius:"2px",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:"32px", color:"#3d2e1a",
+                }}>{o.icon}</div>
+              )}
               <div style={{ fontFamily:"'Cinzel',serif", fontWeight:700, color:"#c4892a", fontSize:"14px", marginBottom:"8px", letterSpacing:"1px" }}>{o.name}</div>
               <div style={{ color:"#5a4a34", fontSize:"11px", lineHeight:1.8, marginBottom:"16px", fontFamily:"'IM Fell English',serif", fontStyle:"italic" }}>{o.desc}</div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"6px" }}>
@@ -3316,6 +3325,30 @@ Write exactly 3 sentences as their eulogy/epitaph. Second-person ("You"). Dark, 
     <div className="crt" style={{ height:"100vh", background:"#000", display:"flex", flexDirection:"column", fontFamily:"'Share Tech Mono',monospace", overflow:"hidden", position:"fixed", inset:0 }}>
       <style>{css}</style>
       <div className="scanline"/>
+
+      {/* In-game character icon — fixed bottom-left */}
+      {selectedOrigin && CHAR_IMGS[selectedOrigin] && (
+        <div style={{
+          position:"fixed", bottom:"20px", left:"20px",
+          background:"rgba(0,0,0,0.85)", border:"1px solid #3a2f1e",
+          padding:"8px", zIndex:9999, borderRadius:"2px",
+          display:"flex", flexDirection:"column", alignItems:"center", gap:"4px",
+        }}>
+          <img
+            src={CHAR_IMGS[selectedOrigin]}
+            alt={ORIGINS[selectedOrigin]?.name || ""}
+            style={{
+              width:"56px", height:"56px",
+              objectFit:"cover", objectPosition:"center top",
+              imageRendering:"pixelated", display:"block",
+              borderRadius:"1px",
+            }}
+          />
+          <div style={{ fontSize:"7px", color:"#6b4c1e", letterSpacing:"1px", fontFamily:"'Share Tech Mono',monospace", textAlign:"center", maxWidth:"56px", lineHeight:1.3 }}>
+            {ORIGINS[selectedOrigin]?.name?.toUpperCase() || ""}
+          </div>
+        </div>
+      )}
 
       {/* Era transition overlay */}
       {eraTransition && (
