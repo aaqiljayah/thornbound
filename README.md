@@ -30,8 +30,6 @@ The AI narrates a living world that reacts to your decisions. Allies die. Plans 
 
 Just open `thornbound.html` in any browser. No install. No build step. No server.
 
-To play it online, host the file anywhere — GitHub Pages, Netlify, any static host.
-
 ---
 
 ## Setup
